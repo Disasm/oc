@@ -9,11 +9,17 @@ local db = require("craft_db")
 local input = require("craft_input")
 local chests = require("craft_chests")
 local movement = require("movement")
+local file_serialization = require("file_serialization")
+
 
 local dataDirectory = "/craft";
 local craftIndex = {1, 2, 3, 5, 6, 7, 9, 10, 11};
 local lastStack = nil;
 local logFile = filesystem.open("/log.txt", "a");
+
+local r = {}
+local machines = {};
+
 
 local debug = function(s)
     print(s)
@@ -33,6 +39,45 @@ function getBlueprint()
     end
     return stacks
 end
+
+
+function inputMachineCommand() 
+    debug("Known machines:")
+    for i = 1, #machines do 
+        local m = machines[i] 
+        debug(i..": "..m.machine_type .. " at ("..m.pos.x..", "..m.pos.z..")")
+    end
+    while true do
+        debug("")
+        debug("a: Add machine")
+        debug("d: Delete machine")
+        debug("q: Quit")
+        local i = input.getChar();
+        if i == "a" then
+            debug("Enter machine type (empty to exit):");
+            local machine_type = input.getString();
+            if machine_type == "" then
+                debug("Aborted.")
+                return
+            end
+            local x, z = movement.get_pos();
+            local machine = { machine_type=machine_type, pos={x=x, z=z} }
+            machines[#machines + 1] = machine
+            file_serialization.save('/machines.txt', machines)
+            chests.setMachines(machines)
+            debug("Machine saved.")
+            return
+        elseif i == "d" then
+            debug("I'm tired of following orders. Just edit the file yourself.")
+            return
+        elseif i == "q" then
+            return
+        end
+    end
+  
+end
+
+
 
 function inputMoveCommand()
   local x, z = movement.get_pos();
@@ -250,10 +295,14 @@ function askUser()
     end
 end
 
-local r = {}
+
 function r.run_craft() 
     db:init(dataDirectory)
     db:load()
+    
+    machines = file_serialization.load("/machines.txt")
+    if machines == nil then machines = {} end
+    chests.setMachines(machines)
 
     term.clear();
     chests.updateCache();
@@ -267,6 +316,7 @@ function r.run_craft()
         debug("a: Add recipe");
         debug("c: Craft");
         debug("m: Move robot");
+        debug("M: Edit machines");
         debug("q: Quit");
         while true do
             local i = input.getChar();
@@ -282,6 +332,9 @@ function r.run_craft()
                 break
             elseif i == "m" then
                 inputMoveCommand();
+                break
+            elseif i == "M" then
+                inputMachineCommand();
                 break
             elseif i == "q" then
                 return
