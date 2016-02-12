@@ -72,7 +72,7 @@ function inputRecipe()
     db:load()
 end
 
-function equalThings(stack1, stack2)
+function equalThings(stack1, stack2) 
     if (stack1 == nil) or (stack2 == nil) then
         return false
     end
@@ -235,30 +235,36 @@ function askUser()
     end
 end
 
-db:init(dataDirectory)
-db:load()
+local r = {}
+function r.run_craft() 
+    db:init(dataDirectory)
+    db:load()
 
-term.clear();
-chests.updateCache();
+    term.clear();
+    chests.updateCache();
 
-term.clear();
+    term.clear();
 
-while true do
-    debug("");
-    debug("");
-    debug("What do you want? Select one.");
-    debug("1. Add recipe");
-    debug("2. Craft");
-    local i = input.getNumber();
-    if i == 1 then
-        inputRecipe();
-        debug("Done.");
-    elseif i == 2 then
-        if askUser() then
-            debug("Done");
+    while true do
+        debug("");
+        debug("");
+        debug("What do you want? Select one.");
+        debug("a: Add recipe");
+        debug("c: Craft");
+        debug("q: Quit");
+        local i = input.getChar();
+        if i == "a" then
+            inputRecipe();
+            debug("Done.");
+        elseif i == "c" then
+            if askUser() then
+                debug("Done");
+            end
+            chests.updateCache();
+        elseif i == "q" then
+            break
         end
-        chests.updateCache();
-    else
-        debug("Invalid choice");
     end
 end
+
+return r 

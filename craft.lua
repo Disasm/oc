@@ -1,3 +1,2 @@
-local shell = require("shell");
-shell.execute("libcraft/craft")
-
+local craft = require("libcraft/craft")
+craft.run_craft();

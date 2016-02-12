@@ -31,6 +31,16 @@ function input.getString()
     return text.trim(term.read());
 end
 
+function input.getChar(allowed_chars)
+  while true do
+    local e, addr, ch, code, player = event.pull("key_down")
+    ch = string.char(ch)
+    if string.find(allowed_chars, ch) ~= nil then 
+      return ch 
+    end
+  end  
+end
+
 function input.getNumber()
     while true do
         local s = term.read();
