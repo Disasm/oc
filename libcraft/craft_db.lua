@@ -1,5 +1,7 @@
-local serialization = require("serialization")
+local file_serialization = require("file_serialization")
 local filesystem = require("filesystem")
+
+
 
 local db = {}
 
@@ -11,11 +13,7 @@ end
 function readRecipeDir(directory)
     local recipes = {}
     for fileName in filesystem.list(directory) do
-        local f = filesystem.open(directory.."/"..fileName, "r")
-        local s = f:read(10000)
-        f:close()
-        
-        recipes[#recipes+1] = serialization.unserialize(s)
+        recipes[#recipes+1] = file_serialization.load(directory.."/"..fileName)
     end
     return recipes
 end
@@ -31,11 +29,7 @@ end
 
 function db:add(recipe)
     local fileName = self.directory.."/"..recipe.to.label..".txt"
-
-    local f = filesystem.open(fileName, "w")
-    f:write(serialization.serialize(recipe))
-    f:close()
-
+    file_serialization.save(fileName, recipe)
     self:load()
 end
 

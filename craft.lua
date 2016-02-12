@@ -1,3 +1,3 @@
 local shell = require("shell");
-shell.exec("libcraft/craft")
+shell.execute("libcraft/craft")
 
