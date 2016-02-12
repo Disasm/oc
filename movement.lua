@@ -65,7 +65,7 @@ local function forceForward()
     return true
 end
 
-local function calcTurns(dz, dz)
+local function calcTurns(dx, dz)
     local dx1 = state.dx
     local dz1 = state.dz
     local cnt = 0
