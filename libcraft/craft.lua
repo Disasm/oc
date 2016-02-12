@@ -8,13 +8,14 @@ local computer = require("computer")
 local db = require("craft_db")
 local input = require("craft_input")
 local chests = require("craft_chests")
+local movement = require("movement")
 
 local dataDirectory = "/craft";
 local craftIndex = {1, 2, 3, 5, 6, 7, 9, 10, 11};
 local lastStack = nil;
 local logFile = filesystem.open("/log.txt", "a");
 
-function debug(s)
+local debug = function(s)
     print(s)
     logFile:write(s)
     logFile:write("\n")
@@ -31,6 +32,20 @@ function getBlueprint()
         stacks[i] = readStackInternal(craftIndex[i]);
     end
     return stacks
+end
+
+function inputMoveCommand()
+  local x, z = movement.get_pos();
+  debug("Current position: X = "..x..", Z = "..z)
+  debug("Enter new position (empty to exit):")
+  debug("X = ?")
+  local x = input.getNumber();
+  if x == nil then return end 
+  debug("Z = ?")
+  local z = input.getNumber();
+  if z == nil then return end 
+  movement.set_pos(x, z)
+  debug("Done.")
 end
 
 function inputRecipe()
@@ -251,18 +266,26 @@ function r.run_craft()
         debug("What do you want? Select one.");
         debug("a: Add recipe");
         debug("c: Craft");
+        debug("m: Move robot");
         debug("q: Quit");
-        local i = input.getChar();
-        if i == "a" then
-            inputRecipe();
-            debug("Done.");
-        elseif i == "c" then
-            if askUser() then
-                debug("Done");
+        while true do
+            local i = input.getChar();
+            if i == "a" then
+                inputRecipe();
+                debug("Done.");
+                break
+            elseif i == "c" then
+                if askUser() then
+                    debug("Done");
+                end
+                chests.updateCache();
+                break
+            elseif i == "m" then
+                inputMoveCommand();
+                break
+            elseif i == "q" then
+                return
             end
-            chests.updateCache();
-        elseif i == "q" then
-            break
         end
     end
 end

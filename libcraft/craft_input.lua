@@ -31,14 +31,9 @@ function input.getString()
     return text.trim(term.read());
 end
 
-function input.getChar(allowed_chars)
-  while true do
+function input.getChar()
     local e, addr, ch, code, player = event.pull("key_down")
-    ch = string.char(ch)
-    if string.find(allowed_chars, ch) ~= nil then 
-      return ch 
-    end
-  end  
+    return string.char(ch) 
 end
 
 function input.getNumber()
