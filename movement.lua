@@ -3,6 +3,7 @@ local computer = require("computer")
 local component = require("component")
 local eeprom = component.proxy(component.list("eeprom")())
 local serialization = require("serialization")
+local os = require("os")
 
 local state = nil
 
@@ -47,7 +48,7 @@ local function tryForward()
         if tries > 20 then
             return false
         end
-        sleep(0.8)
+        os.sleep(0.8)
     end
     state.x = state.x + state.dx
     state.z = state.z + state.dz
@@ -57,7 +58,7 @@ end
 
 local function forceForward()
     while not robot.forward() do
-        sleep(0.8)
+        os.sleep(0.8)
     end
     state.x = state.x + state.dx
     state.z = state.z + state.dz
