@@ -21,11 +21,11 @@ chests = {}
 local chestCache = nil;
 
 
-function go_to_the_chest()
+chests.goToTheChest = function()
     local pos = nil
     for j = 1, #machines do 
         if machines[j].machine_type == "Chest" then 
-            pos = machines[i].pos;
+            pos = machines[j].pos;
             break
         end
     end 
@@ -37,7 +37,7 @@ end
 chests.updateCache = function()
     print("Updating cache...")
     chestCache = {}
-    go_to_the_chest()
+    chests.goToTheChest()
     local n = ic.getInventorySize(chestSide);
     if n == nil then 
         print("Warning: chest is displaced")
@@ -49,7 +49,7 @@ chests.updateCache = function()
 end
 
 chests.dropAll = function()
-    go_to_the_chest()
+    chests.goToTheChest()
     for slot=1,16 do
         if robot.count(slot) > 0 then
             if not chests.placeItemsToChest(slot) then
@@ -62,7 +62,7 @@ chests.dropAll = function()
 end
 
 chests.countItemInChest = function(stack)
-    go_to_the_chest()
+    chests.goToTheChest()
     local n = ic.getInventorySize(chestSide);
     local cnt = 0;
     for i = 1,n do
@@ -76,7 +76,7 @@ chests.countItemInChest = function(stack)
 end
 
 chests.suckItemsFromChest = function(stack, slot)
-    go_to_the_chest()
+    chests.goToTheChest()
     robot.select(slot);
     local n = ic.getInventorySize(chestSide);
     if n == nil then 
@@ -116,7 +116,7 @@ end
 chests.placeItemsToChest = function(srcSlot)
     local stack = ic.getStackInInternalSlot(srcSlot);
     robot.select(srcSlot);
-    go_to_the_chest()
+    chests.goToTheChest()
     local n = ic.getInventorySize(chestSide);
     if n == nil then 
         debug("Warning: chest is displaced")

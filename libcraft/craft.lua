@@ -40,13 +40,16 @@ function getBlueprint()
     return stacks
 end
 
-
-function inputMachineCommand() 
+function listMachines()
     debug("Known machines:")
     for i = 1, #machines do 
         local m = machines[i] 
         debug(i..": "..m.machine_type .. " at ("..m.pos.x..", "..m.pos.z..")")
-    end
+    end  
+end
+
+function inputMachineCommand() 
+    listMachines();
     while true do
         debug("")
         debug("a: Add machine")
@@ -93,7 +96,7 @@ function inputMoveCommand()
   debug("Done.")
 end
 
-function inputRecipe()
+function inputCraftRecipe()
     local bp = nil;
     local rs = nil;
     
@@ -101,6 +104,7 @@ function inputRecipe()
     robot.select(16);
     if not crafting.craft(1) then
         bp = nil
+        debug("")
         debug("Insert items for craft into top left slots")
         debug("Press Enter to craft...")
         input.waitForEnter()
@@ -126,10 +130,104 @@ function inputRecipe()
     rs = readStackInternal(16);
     debug("Crafted "..rs.size.." x "..rs.label)
     
-    local recipe = {from=bp, to=rs}
+    local recipe = {recipe_type="craft", from=bp, to=rs}
     
     db:add(recipe)
-    db:load()
+    debug("Done.");
+end
+
+
+function inputMachineRecipe() 
+    debug("")
+    listMachines();
+    debug("");
+    debug("Select machine (empty to quit):")
+    local machine;
+    while true do
+        local i = input.getNumber();
+        if i == nil then return end
+        if i < 1 or i > #machines then 
+            debug("Invalid number.")
+        end
+        machine = machines[i]
+        break
+    end
+    movement.set_pos(machine.pos.x, machine.pos.z)
+    
+    local slot = 1
+    local input_stack = nil 
+    while true do 
+        input_stack = readStackInternal(slot)
+        if input_stack == nil then 
+            debug("First slot is empty.")
+            debug("Put input resource in the first slot.")
+            debug("Retry? [y/n]")
+            if input.waitYesNo() == "n" then
+                return 
+            end
+        else 
+            robot.select(slot)
+            if not robot.dropDown() then 
+                debug("DropDown failed.")
+                debug("Retry? [y/n]")
+                if input.waitYesNo() == "n" then
+                    return 
+                end
+            else 
+                break
+            end
+        end
+    end
+    while true do 
+        debug("Wait for the resource to be processed.")
+        debug("y: Suck output from machine")
+        debug("n: Abort")
+        if input.waitYesNo() == "n" then
+            return 
+        end
+        if not robot.suckDown() then 
+            debug("SuckDown failed.")
+        else 
+            break 
+        end
+    end
+    local output_stack = readStackInternal(slot)
+    
+    debug("")
+    debug("Recipe is ready:")
+    debug("")
+    debug("Machine type: "..machine.machine_type)
+    debug("Input:  "..input_stack.size.." x "..input_stack.label);        
+    debug("Output: "..output_stack.size.." x "..output_stack.label);   
+    debug("")
+    debug("Save? [y/n]")
+    if input.waitYesNo() == "n" then
+        return 
+    end
+    local recipe = {recipe_type = "generic_machine", machine_type = machine.machine_type, from = { input_stack }, to = output_stack }
+    db:add(recipe)
+    debug("Done.");    
+end
+
+function inputRecipe() 
+  debug("")
+  debug("Add new recipe:")
+  debug("c: Craft recipe")
+  debug("m: Machine recipe")
+  debug("q: Quit")
+  while true do
+      local i = input.getChar();
+      if i == "c" then
+          inputCraftRecipe();
+          return
+      elseif i == "m" then
+          inputMachineRecipe();
+          return
+      elseif i == "q" then
+          return
+      end
+  end
+  
 end
 
 function equalThings(stack1, stack2) 
@@ -152,6 +250,7 @@ function craftItem(stack, top)
             end
             chests.suckItemsFromChest(db.makeStack(stack, take), 16)
             robot.select(16);
+            chests.goToTheChest()
             robot.dropUp();
             stack.size = stack.size - take;
             cnt = 0;
@@ -203,15 +302,44 @@ function craftItem(stack, top)
                         return false
                     end
                 end
-                -- do craft
-                robot.select(16);
-                local ok = crafting.craft(1);
-                if not ok then
-                    debug("Craft error")
-                    return false;
+                if r.recipe_type == "generic_machine" then 
+                    local machine_ok = false
+                    for j = 1, #machines do                         
+                        if machines[j].machine_type == r.machine_type then 
+                            movement.set_pos(machines[j].pos.x, machines[j].pos.z)
+                            machine_ok = true
+                            break
+                        end
+                    end
+                    if not machine_ok then 
+                        debug("Machine is missing: "..r.machine_type)
+                        return false
+                    end                        
+                    robot.select(1)
+                    if not robot.dropDown() then 
+                        debug("DropDown error")
+                        return false;
+                    end
+                    robot.select(16)
+                    local stack = nil 
+                    while not stack or stack.size < r.to.size do 
+                        stack = readStackInternal(16)
+                        robot.suckDown()
+                    end
+                    
+                else
+                    -- do craft
+                    robot.select(16);
+                    local ok = crafting.craft(1);
+                    if not ok then
+                        debug("Craft error")
+                        return false;
+                    end
+                    
                 end
                 
                 if top then
+                    chests.goToTheChest()
                     robot.select(16);
                     if cnt > robot.count(16) then
                         robot.dropUp(cnt);
@@ -274,6 +402,8 @@ function askUser()
     if n == nil then
         return false
     end
+    
+    chests.updateCache();
 
     s = db.makeStack(s, n);
     while true do
@@ -293,6 +423,7 @@ function askUser()
         end
         chests.updateCache();
     end
+    chests.updateCache();
 end
 
 
@@ -322,13 +453,11 @@ function r.run_craft()
             local i = input.getChar();
             if i == "a" then
                 inputRecipe();
-                debug("Done.");
                 break
             elseif i == "c" then
                 if askUser() then
                     debug("Done");
                 end
-                chests.updateCache();
                 break
             elseif i == "m" then
                 inputMoveCommand();
