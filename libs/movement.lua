@@ -4,17 +4,21 @@ local component = require("component")
 local eeprom = component.proxy(component.list("eeprom")())
 local serialization = require("serialization")
 local os = require("os")
+local file_serialization = require("file_serialization")
 
+local stateFileName = "/position.dat"
 local state = nil
 
 local function saveState()
-    s = serialization.serialize(state)
-    eeprom.setLabel(s)
+    --s = serialization.serialize(state)
+    --eeprom.setLabel(s)
+    file_serialization.save(stateFileName, state)
 end
 
 local function loadState()
-    local s = eeprom.getLabel()
-    s = serialization.unserialize(s)
+    --local s = eeprom.getLabel()
+    --s = serialization.unserialize(s)
+    s = file_serialization.load(stateFileName)
     if type(s) == "table" and s.x ~= nil then
         state = s
     else

@@ -1,3 +1,5 @@
+package.path = package.path .. ';/libs/?.lua;/libcraft/?.lua'
+
 local movement = require("movement")
 
 local argv = {...}
