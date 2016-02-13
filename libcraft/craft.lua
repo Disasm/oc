@@ -21,6 +21,17 @@ local r = {}
 local machines = {};
 
 
+function update_chests_list() 
+  local chests1 = {};
+  for j = 1, #machines do 
+      if machines[j].machine_type == "Chest" then 
+          chests1[#chests1 + 1] = machines[j];
+      end
+  end 
+  chests.setChests(chests1);
+end
+
+
 local debug = function(s)
     print(s)
     logFile:write(s)
@@ -65,10 +76,37 @@ function inputMachineCommand()
             end
             local x, z = movement.get_pos();
             local machine = { machine_type=machine_type, pos={x=x, z=z} }
+            if machine_type == "Chest" then 
+                while true do
+                    debug("")
+                    debug("Select chest type:")
+                    debug("s: Storage")
+                    debug("i: Incoming")
+                    debug("o: Outcoming")
+                    debug("q: Quit")
+                    local j = input.getChar();
+                    if j == "s" then 
+                        machine.chest_type = "storage"
+                        break
+                    elseif j == "i" then
+                        machine.chest_type = "incoming"
+                        break
+                    elseif j == "o" then
+                        machine.chest_type = "outcoming"
+                        break
+                    elseif j == "q" then 
+                        debug("Aborted.")
+                        return
+                    end
+                end
+            end
             machines[#machines + 1] = machine
             file_serialization.save('/machines.txt', machines)
-            chests.setMachines(machines)
+            update_chests_list()
             debug("Machine saved.")
+            if machine_type == "Chest" then 
+                chests.updateCache();
+            end
             return
         elseif i == "d" then
             debug("I'm tired of following orders. Just edit the file yourself.")
@@ -250,7 +288,7 @@ function craftItem(stack, top)
             end
             chests.suckItemsFromChest(db.makeStack(stack, take), 16)
             robot.select(16);
-            chests.goToTheChest()
+            chests.goToOutcomingChest()
             robot.dropUp();
             stack.size = stack.size - take;
             cnt = 0;
@@ -339,7 +377,7 @@ function craftItem(stack, top)
                 end
                 
                 if top then
-                    chests.goToTheChest()
+                    chests.goToOutcomingChest()
                     robot.select(16);
                     if cnt > robot.count(16) then
                         robot.dropUp(cnt);
@@ -357,7 +395,6 @@ function craftItem(stack, top)
 end
 
 function askUser()
-    chests.dropAll();
     local ind = nil;
     while true do
         debug("Enter item name (empty to exit):")
@@ -403,6 +440,7 @@ function askUser()
         return false
     end
     
+    chests.dropAll();
     chests.updateCache();
 
     s = db.makeStack(s, n);
@@ -433,7 +471,7 @@ function r.run_craft()
     
     machines = file_serialization.load("/machines.txt")
     if machines == nil then machines = {} end
-    chests.setMachines(machines)
+    update_chests_list()
 
     term.clear();
     chests.updateCache();

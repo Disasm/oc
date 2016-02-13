@@ -6,3 +6,6 @@ for i = 1, #files do
   shell.execute("rm \""..name.."\"")
   shell.execute("wget \""..url..name.."\" \""..name.."\"")
 end
+
+package.loaded = nil
+_G = nil
