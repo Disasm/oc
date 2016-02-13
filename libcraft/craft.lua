@@ -134,6 +134,20 @@ function inputMoveCommand()
   debug("Done.")
 end
 
+
+function addRecipe(recipe)
+    if db:find(recipe.to) ~= nil then 
+          print("")
+          print("Recipe for "..(recipe.to.label).." already exists!")
+          print("Rewrite? [y/n]")
+          if input.waitYesNo() == "n" then
+              return
+          end
+    end 
+    db:add(recipe)
+    debug("Done.");
+end
+
 function inputCraftRecipe()
     local bp = nil;
     local rs = nil;
@@ -170,8 +184,7 @@ function inputCraftRecipe()
     
     local recipe = {recipe_type="craft", from=bp, to=rs}
     
-    db:add(recipe)
-    debug("Done.");
+    addRecipe(recipe)
 end
 
 
@@ -243,8 +256,7 @@ function inputMachineRecipe()
         return 
     end
     local recipe = {recipe_type = "generic_machine", machine_type = machine.machine_type, from = { input_stack }, to = output_stack }
-    db:add(recipe)
-    debug("Done.");    
+    addRecipe(recipe)
 end
 
 function inputRecipe() 

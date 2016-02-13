@@ -6,7 +6,7 @@ local sides = require("sides")
 local movement = require("movement")
 
 local chestSide = sides.down
-local chests = nil
+local chestsList = nil
 
 function equalThings(stack1, stack2)
     if (stack1 == nil) or (stack2 == nil) then
@@ -21,9 +21,9 @@ chests = {}
 local chestCache = nil;
 
 chests.goToOutcomingChest = function() 
-    for j = 1, #chests do 
-        if chests[j].chest_type == "outcoming" then 
-            movement.set_pos(chests[j].pos.x, chests[j].pos.z)
+    for j = 1, #chestsList do 
+        if chestsList[j].chest_type == "outcoming" then 
+            movement.set_pos(chestsList[j].pos.x, chestsList[j].pos.z)
             return 
         end 
     end
@@ -47,10 +47,10 @@ end
 chests.updateCache = function()
     print("Updating cache...")
     chestCache = {}
-    for j = 1, #chests do 
+    for j = 1, #chestsList do 
         print("Checking chest "..j)
-        if chests[j].chest_type ~= "outcoming" then 
-            movement.set_pos(chests[j].pos.x, chests[j].pos.z)
+        if chestsList[j].chest_type ~= "outcoming" then 
+            movement.set_pos(chestsList[j].pos.x, chestsList[j].pos.z)
             chestCache[j] = updateOneChestCache() 
         end
     end 
@@ -65,9 +65,9 @@ chests.dropAll = function()
             if not moved_to_chest then 
             
                 local chest_ok = false
-                for j = 1, #chests do 
-                    if chests[j].chest_type == "storage" then 
-                        movement.set_pos(chests[j].pos.x, chests[j].pos.z)
+                for j = 1, #chestsList do 
+                    if chestsList[j].chest_type == "storage" then 
+                        movement.set_pos(chestsList[j].pos.x, chestsList[j].pos.z)
                         chest_ok = true 
                         break 
                     end
@@ -116,7 +116,7 @@ chests.suckItemsFromChest = function(stack, slot)
             for j = 1, #(chestCache[i]) do 
                 local s = chestCache[i][j];
                 if equalThings(s, stack) then
-                    movement.set_pos(chests[i].pos.x, chests[i].pos.z)
+                    movement.set_pos(chestsList[i].pos.x, chestsList[i].pos.z)
                     local ok = false;
                     local take = s.size;
                     if s.size > cnt then
@@ -140,9 +140,9 @@ end
 chests.placeItemsToChest = function(srcSlot)
     local chest_ok = false
     local chest_index = nil
-    for j = 1, #chests do 
-      if chests[j].chest_type == "storage" then 
-            movement.set_pos(chests[j].pos.x, chests[j].pos.z)
+    for j = 1, #chestsList do 
+      if chestsList[j].chest_type == "storage" then 
+            movement.set_pos(chestsList[j].pos.x, chestsList[j].pos.z)
             chest_ok = true 
             chest_index = j
             break 
@@ -189,7 +189,7 @@ chests.placeItemsToChest = function(srcSlot)
 end
 
 chests.setChests = function(v)
-    chests = v 
+    chestsList = v 
 end
   
 

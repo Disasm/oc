@@ -28,9 +28,15 @@ function db:load()
 end
 
 function db:add(recipe)
+    local index = db:find(recipe.to)
+    if index ~= nil then 
+        self.recipes[index] = recipe
+    else
+        self.recipes[#self.recipes + 1] = recipe
+    end
+  
     local fileName = self.directory.."/"..recipe.to.label..".txt"
     file_serialization.save(fileName, recipe)
-    self:load()
 end
 
 function db:get(index)
