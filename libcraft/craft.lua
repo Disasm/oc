@@ -289,7 +289,7 @@ function craftItem(stack, top)
             chests.suckItemsFromChest(db.makeStack(stack, take), 16)
             robot.select(16);
             chests.goToOutcomingChest()
-            robot.dropUp();
+            robot.dropDown();
             stack.size = stack.size - take;
             cnt = 0;
         end
@@ -376,13 +376,15 @@ function craftItem(stack, top)
                     
                 end
                 
+                cnt = cnt - robot.count(16)
+                
                 if top then
                     chests.goToOutcomingChest()
                     robot.select(16);
-                    if cnt > robot.count(16) then
-                        robot.dropUp(cnt);
+                    if cnt < 0 then
+                        robot.dropDown(robot.count(16) + cnt);
                     else
-                        robot.dropUp();
+                        robot.dropDown();
                     end
                 end
 
@@ -441,7 +443,7 @@ function askUser()
     end
     
     chests.dropAll();
-    chests.updateCache();
+    -- chests.updateCache();
 
     s = db.makeStack(s, n);
     while true do
@@ -461,7 +463,7 @@ function askUser()
         end
         chests.updateCache();
     end
-    chests.updateCache();
+    -- chests.updateCache();
 end
 
 
