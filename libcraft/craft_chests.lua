@@ -95,9 +95,8 @@ chests.countItemInChest = function(stack)
     
     local cnt = 0;
     for i = 1, #chestCache do 
-        if chestCache[i] ~= nil then 
-            for j = 1, #(chestCache[i]) do 
-                local s = chestCache[i][j];
+        if chestCache[i] ~= nil then
+            for j, s in pairs(chestCache[i]) do
                 if equalThings(s, stack) then
                     cnt = cnt + s.size;
                 end
@@ -113,8 +112,7 @@ chests.suckItemsFromChest = function(stack, slot)
     local cnt = stack.size;
     for i = 1, #chestCache do 
         if chestCache[i] ~= nil then 
-            for j = 1, #(chestCache[i]) do 
-                local s = chestCache[i][j];
+            for j, s in pairs(chestCache[i]) do
                 if equalThings(s, stack) then
                     movement.set_pos(chestsList[i].pos.x, chestsList[i].pos.z)
                     local ok = false;
