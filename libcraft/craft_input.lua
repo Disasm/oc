@@ -2,6 +2,7 @@ local keyboard = require("keyboard")
 local event = require("event")
 local term = require("term")
 local text = require("text")
+local unicode = require("unicode")
 
 local input = {}
 
@@ -17,7 +18,7 @@ end
 function input.waitYesNo()
     while true do
         local e, addr, ch, code, player = event.pull("key_down")
-        ch = string.char(ch)
+        ch = unicode.char(ch)
         if ch == 'y' then
             return 'y'
         end
@@ -33,7 +34,7 @@ end
 
 function input.getChar()
     local e, addr, ch, code, player = event.pull("key_down")
-    return string.char(ch) 
+    return unicode.char(ch) 
 end
 
 function input.getNumber()
