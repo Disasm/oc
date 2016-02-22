@@ -54,21 +54,33 @@ chests.sortIncoming = function()
         print("No incoming chest!")
         return
     end 
+    print("Updating incoming chest")
+    movement.set_pos(chestsList[incoming_index].pos.x, chestsList[incoming_index].pos.z)
+    chestCache[incoming_index] = updateOneChestCache(incoming_index, chestsList[incoming_index].chest_type) 
+    print("Searching for displaced items")
     while true do 
         local found_cargo = false 
         for j, s in pairs(chestCache[incoming_index]) do    
             local itemHash = s.name .. "_" .. s.label   
-            if item_cache[itemHash] ~= nil and item_cache[itemHash].chest_index ~= nil then 
-                movement.set_pos(chestsList[incoming_index].pos.x, chestsList[incoming_index].pos.z)
-                ic.suckFromSlot(chestSide, j)
-                chestCache[incoming_index][j] = ic.getStackInSlot(chestSide, j)
-                found_cargo = true 
-                break 
+            if item_cache[itemHash] ~= nil then
+                if item_cache[itemHash].chest_index ~= nil then 
+                    print("Moving "..s.label.." to proper chest...")                
+                    movement.set_pos(chestsList[incoming_index].pos.x, chestsList[incoming_index].pos.z)
+                    ic.suckFromSlot(chestSide, j)
+                    chestCache[incoming_index][j] = ic.getStackInSlot(chestSide, j)
+                    found_cargo = true 
+                    break 
+                else 
+                    print("No chest index in cache for "..itemHash)                
+                end
+            else 
+                print("No cache entry for "..itemHash)
             end 
         end 
         if not found_cargo then return end 
         chests.dropAll();
     end 
+    print("Done")
 end
 
 
@@ -84,10 +96,12 @@ function updateOneChestCache(chest_index, chest_type)
         if r[i] ~= nil then
             local itemHash = r[i].name .. "_" .. r[i].label   
             if item_cache[itemHash] == nil then 
+                print("Adding new item to cache: "..itemHash)                
                 item_cache[itemHash] = {}
             end 
             item_cache[itemHash].max_size = r[i].maxSize
             if chest_type ~= "incoming" then 
+                -- print("Setting chest index") 
                 item_cache[itemHash].chest_index = chest_index
             end
         end
@@ -120,6 +134,7 @@ chests.dropAll = function()
         end
     end
     robot.select(1);
+    save_cache();
 end
 
 chests.countItemInChest = function(stack)
@@ -171,31 +186,39 @@ chests.placeItemsToChest = function(srcSlot)
     if stack == nil then return true end 
     
     local itemHash = stack.name .. "_" .. stack.label   
-    local chest_index
-    if item_cache[itemHash] == nil or item_cache[itemHash].chest_index == nil then 
-        local chest_ok = false
+    local chest_index = nil
+    if item_cache[itemHash] ~= nil then
+        if item_cache[itemHash].chest_index ~= nil then 
+            chest_index = item_cache[itemHash].chest_index
+            if chest_index < 1 or chest_index > #chestsList then 
+                print("Invalid chest index!")
+                chest_index = nil
+            else 
+            end
+        else 
+            print("No chest index in cache for "..itemHash)      
+        end 
+    else 
+        print("No cache entry for "..itemHash)
+        item_cache[itemHash] = {}
+    end
+    item_cache[itemHash].max_size = stack.maxSize
+    if not chest_index then 
         for j = 1, #chestsList do 
             if chestsList[j].chest_type == "incoming" then 
                 movement.set_pos(chestsList[j].pos.x, chestsList[j].pos.z)
-                chest_ok = true 
                 chest_index = j
                 break 
             end
         end
-        if not chest_ok then 
-            print("No incoming chest!");
-            computer.beep(1000, 0.7);
-            return false
-        end         
-    else 
-        chest_index = item_cache[itemHash].chest_index
-        if chest_index < 1 or chest_index > #chestsList then 
-            print("Invalid chest index!")
-            return false
-        else 
-            movement.set_pos(chestsList[chest_index].pos.x, chestsList[chest_index].pos.z)
-        end
     end 
+    if not chest_index then 
+        print("No incoming chest!");
+        computer.beep(1000, 0.7);
+        return false
+    end     
+    movement.set_pos(chestsList[chest_index].pos.x, chestsList[chest_index].pos.z)
+    
 
     robot.select(srcSlot);
     local n = ic.getInventorySize(chestSide);
