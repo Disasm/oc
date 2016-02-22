@@ -109,8 +109,25 @@ function inputMachineCommand()
             end
             return
         elseif i == "d" then
-            debug("I'm tired of following orders. Just edit the file yourself.")
-            return
+        
+            while true do
+                debug("Input machine number:")
+                local i = input.getNumber();
+                if i == nil then return end
+                if i < 1 or i > #machines then 
+                    debug("Invalid number.")                    
+                else
+                    local is_chest = machines[i].machine_type == "Chest"
+                    table.remove(machines, i)
+                    file_serialization.save('/machines.txt', machines)
+                    update_chests_list()
+                    debug("Machine removed.")
+                    if is_chest then 
+                        chests.updateCache()
+                    end
+                    return
+                end
+            end
         elseif i == "q" then
             return
         end
@@ -498,8 +515,9 @@ function r.run_craft()
         debug("What do you want? Select one.");
         debug("a: Add recipe");
         debug("c: Craft");
-        debug("m: Move robot");
-        debug("M: Edit machines");
+        debug("g: Move robot");
+        debug("m: Edit machines");
+        debug("s: Sort incoming");
         debug("q: Quit");
         while true do
             local i = input.getChar();
@@ -508,14 +526,17 @@ function r.run_craft()
                 break
             elseif i == "c" then
                 if askUser() then
-                    debug("Done");
+                    debug("Done")
                 end
                 break
-            elseif i == "m" then
-                inputMoveCommand();
+            elseif i == "g" then
+                inputMoveCommand()
                 break
-            elseif i == "M" then
-                inputMachineCommand();
+            elseif i == "m" then
+                inputMachineCommand()
+                break
+            elseif i == "s" then
+                chests.sortIncoming()
                 break
             elseif i == "q" then
                 return

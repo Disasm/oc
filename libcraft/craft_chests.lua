@@ -4,9 +4,20 @@ local ic = component.inventory_controller
 local computer = require("computer")
 local sides = require("sides")
 local movement = require("movement")
-
+local file_serialization = require("file_serialization")
 local chestSide = sides.down
 local chestsList = nil
+
+
+local item_cache = file_serialization.load("/item_type_data_cache.txt")
+if item_cache == nil then item_cache = {} end 
+
+
+function save_cache() 
+    file_serialization.save("/item_type_data_cache.txt", item_cache)  
+end
+
+
 
 function equalThings(stack1, stack2)
     if (stack1 == nil) or (stack2 == nil) then
@@ -31,15 +42,56 @@ chests.goToOutcomingChest = function()
 end
 
 
-function updateOneChestCache() 
+chests.sortIncoming = function() 
+    local incoming_index = nil 
+    for j = 1, #chestsList do 
+        if chestsList[j].chest_type == "incoming" then 
+            incoming_index = j
+            break
+        end 
+    end
+    if not incoming_index then 
+        print("No incoming chest!")
+        return
+    end 
+    while true do 
+        local found_cargo = false 
+        for j, s in pairs(chestCache[incoming_index]) do    
+            local itemHash = s.name .. "_" .. s.label   
+            if item_cache[itemHash] ~= nil and item_cache[itemHash].chest_index ~= nil then 
+                movement.set_pos(chestsList[incoming_index].pos.x, chestsList[incoming_index].pos.z)
+                ic.suckFromSlot(chestSide, j)
+                chestCache[incoming_index][j] = ic.getStackInSlot(chestSide, j)
+                found_cargo = true 
+                break 
+            end 
+        end 
+        if not found_cargo then return end 
+        chests.dropAll();
+    end 
+end
+
+
+function updateOneChestCache(chest_index, chest_type) 
     local r = {}
-    local n = ic.getInventorySize(chestSide);
+    local n = ic.getInventorySize(chestSide)
     if n == nil then 
         print("Warning: chest is displaced")
         return 
     end
     for i = 1,n do
         r[i] = ic.getStackInSlot(chestSide, i);
+        if r[i] ~= nil then
+            local itemHash = r[i].name .. "_" .. r[i].label   
+            if item_cache[itemHash] == nil then 
+                item_cache[itemHash] = {}
+            end 
+            item_cache[itemHash].max_size = r[i].maxSize
+            if chest_type ~= "incoming" then 
+                item_cache[itemHash].chest_index = chest_index
+            end
+        end
+        
     end
     return r
 end
@@ -51,9 +103,10 @@ chests.updateCache = function()
         print("Checking chest "..j)
         if chestsList[j].chest_type ~= "outcoming" then 
             movement.set_pos(chestsList[j].pos.x, chestsList[j].pos.z)
-            chestCache[j] = updateOneChestCache() 
+            chestCache[j] = updateOneChestCache(j, chestsList[j].chest_type) 
         end
     end 
+    save_cache();
 end
 
 chests.dropAll = function()
@@ -61,31 +114,9 @@ chests.dropAll = function()
     local moved_to_chest = false 
     
     for slot=1,16 do
-        if robot.count(slot) > 0 then
-            if not moved_to_chest then 
-            
-                local chest_ok = false
-                for j = 1, #chestsList do 
-                    if chestsList[j].chest_type == "storage" then 
-                        movement.set_pos(chestsList[j].pos.x, chestsList[j].pos.z)
-                        chest_ok = true 
-                        break 
-                    end
-                end
-                if not chest_ok then 
-                    debug("No storage chests!");
-                    computer.beep(1000, 0.7);
-                    return
-                end 
-            
-                moved_to_chest = true
-            end 
-        
-        
-            if not chests.placeItemsToChest(slot) then
-                debug("Can't put items into chest");
-                computer.beep(1000, 0.7);
-            end
+        if not chests.placeItemsToChest(slot) then
+            print("Can't put items into chest");
+            computer.beep(1000, 0.7);
         end
     end
     robot.select(1);
@@ -136,27 +167,40 @@ chests.suckItemsFromChest = function(stack, slot)
 end
 
 chests.placeItemsToChest = function(srcSlot)
-    local chest_ok = false
-    local chest_index = nil
-    for j = 1, #chestsList do 
-      if chestsList[j].chest_type == "storage" then 
-            movement.set_pos(chestsList[j].pos.x, chestsList[j].pos.z)
-            chest_ok = true 
-            chest_index = j
-            break 
-        end
-    end
-    if not chest_ok then 
-        debug("No storage chests!");
-        computer.beep(1000, 0.7);
-        return
-    end   
-  
     local stack = ic.getStackInInternalSlot(srcSlot);
+    if stack == nil then return true end 
+    
+    local itemHash = stack.name .. "_" .. stack.label   
+    local chest_index
+    if item_cache[itemHash] == nil or item_cache[itemHash].chest_index == nil then 
+        local chest_ok = false
+        for j = 1, #chestsList do 
+            if chestsList[j].chest_type == "incoming" then 
+                movement.set_pos(chestsList[j].pos.x, chestsList[j].pos.z)
+                chest_ok = true 
+                chest_index = j
+                break 
+            end
+        end
+        if not chest_ok then 
+            print("No incoming chest!");
+            computer.beep(1000, 0.7);
+            return false
+        end         
+    else 
+        chest_index = item_cache[itemHash].chest_index
+        if chest_index < 1 or chest_index > #chestsList then 
+            print("Invalid chest index!")
+            return false
+        else 
+            movement.set_pos(chestsList[chest_index].pos.x, chestsList[chest_index].pos.z)
+        end
+    end 
+
     robot.select(srcSlot);
     local n = ic.getInventorySize(chestSide);
     if n == nil then 
-        debug("Warning: chest is displaced")
+        print("Warning: chest is displaced")
         return 
     end
     for i = 1,n do
