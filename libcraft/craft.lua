@@ -372,7 +372,7 @@ function craftItem(stack, top)
                 local n = math.floor((chests.maxStackSize(r.to) or r.to.size) / r.to.size)
                 maxCount = math.min(maxCount, n)
                 if maxCount > 1 then
-                    crafts = maxCount
+                    crafts = math.min(maxCount, math.ceil(cnt / r.to.size))
                 end
                 
                 for slot, s in pairs(r.from) do
