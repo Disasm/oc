@@ -361,10 +361,23 @@ function craftItem(stack, top)
                 end
             end
             
-            for i=1,n do
+            while cnt > 0 do
+                -- check if we can craft more than one item
+                local crafts = 1
+                local maxCount = 64
+                for slot, s in pairs(r.from) do
+                    local n = math.floor((chests.maxStackSize(s) or s.size) / s.size)
+                    maxCount = math.min(maxCount, n)
+                end
+                local n = math.floor((chests.maxStackSize(r.to) or r.to.size) / r.to.size)
+                maxCount = math.min(maxCount, n)
+                if maxCount > 1 then
+                    crafts = maxCount
+                end
+                
                 for slot, s in pairs(r.from) do
                     local slot2 = craftIndex[slot];
-                    if not chests.suckItemsFromChest(s, slot2) then
+                    if not chests.suckItemsFromChest(db.makeStack(s, s.size * crafts), slot2) then
                         debug("Can't get items from chest: "..s.size.." x "..s.label)
                         return false
                     end
@@ -389,7 +402,7 @@ function craftItem(stack, top)
                     end
                     robot.select(16)
                     local stack = nil 
-                    while not stack or stack.size < r.to.size do 
+                    while not stack or stack.size < (r.to.size*crafts) do 
                         stack = readStackInternal(16)
                         robot.suckDown()
                     end
@@ -397,7 +410,7 @@ function craftItem(stack, top)
                 else
                     -- do craft
                     robot.select(16);
-                    local ok = crafting.craft(1);
+                    local ok = crafting.craft(crafts);
                     if not ok then
                         debug("Craft error")
                         return false;

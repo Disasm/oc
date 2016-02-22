@@ -31,6 +31,13 @@ chests = {}
 
 local chestCache = nil;
 
+chests.maxStackSize = function(stack)
+    local itemHash = stack.name .. "_" .. stack.label
+    if item_cache[itemHash] ~= nil then
+        return item_cache[itemHash].max_size
+    end
+end
+
 chests.goToOutcomingChest = function() 
     for j = 1, #chestsList do 
         if chestsList[j].chest_type == "outcoming" then 
