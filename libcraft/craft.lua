@@ -410,7 +410,7 @@ function craftItem(stack, top)
                 else
                     -- do craft
                     robot.select(16);
-                    local ok = crafting.craft(crafts);
+                    local ok = crafting.craft(crafts * r.to.size);
                     if not ok then
                         debug("Craft error")
                         return false;
