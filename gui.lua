@@ -223,6 +223,9 @@ function Label.new(xSize, text, alignLeft)
       dx = 0
     else
       dx = math.floor((self.xSize - unicode.wlen(self.text)) / 2)
+      if dx < 0 then
+        dx = 0
+      end
     end
     gpu.set(self.x + dx, self.y, text)
   end
@@ -402,8 +405,8 @@ function Table.new(xSize, ySize, values, widths)
   w.tab_offset = 0
   w.tab_labels = {}
   
-  w:addChild(SimpleButton.new(1, 1, "up", unicode.char(aux.arrowUp)..unicode.char(aux.arrowUp)), xSize-1, 0)
-  w:addChild(SimpleButton.new(1, 1, "down", unicode.char(aux.arrowDown)..unicode.char(aux.arrowDown)), xSize-1, ySize-1)
+  w:addChild(SimpleButton.new(2, 1, "up", unicode.char(aux.arrowUp)..unicode.char(aux.arrowUp)), xSize-2, 0)
+  w:addChild(SimpleButton.new(2, 1, "down", unicode.char(aux.arrowDown)..unicode.char(aux.arrowDown)), xSize-2, ySize-1)
   for y = 1,w.ySize do
     w.tab_labels[y] = {}
     local row = values[y]
