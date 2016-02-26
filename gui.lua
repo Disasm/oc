@@ -7,6 +7,8 @@ local aux = {
   --              tl      tr      br      bl      hor     vert
   singleChars = { 0x250c, 0x2510, 0x2518, 0x2514, 0x2500, 0x2502 },
   doubleChars = { 0x2554, 0x2557, 0x255d, 0x255a, 0x2550, 0x2551 },
+  arrowUp = 0x25b2,
+  arrowDown = 0x25bc,
 }
 
 function aux:drawBox(x, y, w, h, double)
@@ -400,8 +402,8 @@ function Table.new(xSize, ySize, values, widths)
   w.tab_offset = 0
   w.tab_labels = {}
   
-  w:addChild(SimpleButton.new(1, 1, "up", "^"), xSize-1, 0)
-  w:addChild(SimpleButton.new(1, 1, "down", "v"), xSize-1, ySize-1)
+  w:addChild(SimpleButton.new(1, 1, "up", unicode.char(aux.arrowUp)), xSize-1, 0)
+  w:addChild(SimpleButton.new(1, 1, "down", unicode.char(aux.arrowDown)), xSize-1, ySize-1)
   for y = 1,w.ySize do
     w.tab_labels[y] = {}
     local row = values[y]
