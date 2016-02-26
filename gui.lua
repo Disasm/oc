@@ -206,7 +206,8 @@ end
 
 
 local Label = {}
-function Label.new(xSize, text)
+function Label.new(xSize, text, alignLeft)
+  alignLeft = not not alignLeft
   local w = Widget.new(xSize, 1, nil)
   w.text = text
   w.draw = function(self)
@@ -215,7 +216,12 @@ function Label.new(xSize, text)
     if string.len(text) > self.xSize then
       text = string.sub(text, 1, self.xSize)
     end
-    local dx = math.floor((self.xSize - string.len(self.text)) / 2)
+    local dx
+    if alignLeft then
+      dx = 0
+    else
+      dx = math.floor((self.xSize - string.len(self.text)) / 2)
+    end
     gpu.set(self.x + dx, self.y, text)
   end
   return w
@@ -341,6 +347,140 @@ function SpinBox.dimensions(xSize)
 end
 
 
+local LargeSpinBox = {}
+function LargeSpinBox.new(xSize, value, minValue, maxValue)
+  local w = Widget.new(xSize, 3)
+  w.sb_value = value or 0
+  w.sb_minValue = minValue or 0
+  w.sb_maxValue = maxValue or 100000
+  w.sb_step = step or 1
+  
+  local dx = math.floor((xSize - 3) / 2)
+
+  w:addChild(SimpleButton.new(1, 1, "100", "+"), dx+0, 0)
+  w:addChild(SimpleButton.new(1, 1, "10", "+"), dx+1, 0)
+  w:addChild(SimpleButton.new(1, 1, "1", "+"), dx+2, 0)
+  w.sb_label = Label.new(xSize, tostring(w.sb_value))
+  w:addChild(w.sb_label, 0, 1)
+  w:addChild(SimpleButton.new(1, 1, "-100", "-"), dx+0, 2)
+  w:addChild(SimpleButton.new(1, 1, "-10", "-"), dx+1, 2)
+  w:addChild(SimpleButton.new(1, 1, "-1", "-"), dx+2, 2)
+
+  local oldTranslateEvent = w.translateEvent
+  w.translateEvent = function(self, event)
+    local ev = oldTranslateEvent(self, event)
+    if ev == nil then
+      return
+    end
+    local delta = tonumber(ev)
+    if delta ~= 0 then
+      w.sb_value = w.sb_value + delta
+    end
+    if w.sb_value < w.sb_minValue then
+      w.sb_value = w.sb_minValue
+    end
+    if w.sb_value > w.sb_maxValue then
+      w.sb_value = w.sb_maxValue
+    end
+    w.sb_label.text = tostring(w.sb_value)
+    w.sb_label:drawColored()
+  end
+  return w
+end
+function LargeSpinBox.dimensions(xSize)
+  return xSize, 3
+end
+
+
+local Table = {}
+function Table.new(xSize, ySize, values, widths)
+  local w = Widget.new(xSize, ySize)
+  w.tab_values = values
+  w.tab_widths = widths
+  w.tab_offset = 0
+  w.tab_labels = {}
+  
+  w:addChild(SimpleButton.new(1, 1, "up", "^"), xSize-1, 0)
+  w:addChild(SimpleButton.new(1, 1, "down", "v"), xSize-1, ySize-1)
+  for y = 1,w.ySize do
+    w.tab_labels[y] = {}
+    local row = values[y]
+    local offset = 0
+    for x = 1,#widths do
+      local label = Label.new(widths[x], tostring(values[y][x]), true)
+      w:addChild(label, offset, y-1)
+      w.tab_labels[y][x] = label
+      offset = offset + widths[x]
+    end
+  end
+
+  local oldTranslateEvent = w.translateEvent
+  w.translateEvent = function(self, event)
+    local ev = oldTranslateEvent(self, event)
+    if ev ~= nil then
+      if ev == "up" then
+        w.tab_offset = w.tab_offset - 1
+      end
+      if ev == "down" then
+        w.tab_offset = w.tab_offset + 1
+      end
+      if w.tab_offset < 0 then
+        w.tab_offset = 0
+      end
+      if w.tab_offset > (#w.tab_values-ySize) then
+        w.tab_offset = (#w.tab_values-ySize)
+      end
+      w:redraw()
+      return
+    end
+
+    if event[1] ~= "touch" then
+      return
+    end
+    local x, y = event[3], event[4]
+    if (w.x <= x) and (x < w.x+w.xSize-1) and
+       (w.y <= y) and (y < w.y+w.ySize) then
+      x = x - w.x
+      y = y - w.y
+    else
+      return
+    end
+    
+    local xindex = 0
+    local offset = 0
+    for i=1,#w.tab_widths do
+      if offset <= x and x < offset + w.tab_widths[i] then
+        xindex = i
+        break
+      end
+      offset = offset + w.tab_widths[i]
+    end
+    if xindex == 0 then
+      return
+    end
+
+    local yindex = 1 + y + w.tab_offset
+    return {yindex, xindex}
+  end
+  w.draw = function(self)
+    self:clear()
+    for y=1,w.ySize do
+      for x=1,#w.tab_widths do
+        if w.tab_values[y+w.tab_offset] ~= nil then
+          w.tab_labels[y][x].text = tostring(w.tab_values[y+w.tab_offset][x])
+        end
+      end
+    end
+    self:drawChildren()
+  end
+
+  return w
+end
+function Table.dimensions(xSize)
+  return xSize, 3
+end
+
+
 local Screen = {}
 function Screen.new(bgColor)
   local w, h = gpu.getResolution()
@@ -445,6 +585,8 @@ export = {
   SimpleButton = SimpleButton,
   ShadowedButton = ShadowedButton,
   SpinBox = SpinBox,
+  LargeSpinBox = LargeSpinBox,
+  Table = Table,
   Screen = Screen,
   Dialog = Dialog,
   MessageBox = MessageBox,
