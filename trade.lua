@@ -1,5 +1,5 @@
 local component = require("component")
-local file_serialization = require("file_serialization")
+local file_serialization = require("libcraft/file_serialization")
 local gpu = component.gpu
 term = require("term")
 
@@ -22,13 +22,12 @@ local t = {{123, "text1"}, {456, "text2  !!!"},
 {133, "text1"}, {134, "text1"}, {135, "text1"}}
 s:addChild(gui.Table.new(31, 10, t, {5,10}), 20, 5):setColor(0x00c000)
 s:addChild(gui.ShadowedButton.new(10, 1, "exit", "exit", 0xc00000), 5, 12)
-s:addChild(gui.LargeSpinBox.new(5, 1, 0, 4096, 4), 20, 2):setColor(0x00c0c0)
+s:addChild(gui.LargeSpinBox.new(5, 1, 0, 4096, 4), 20, 1):setColor(0x00c0c0)
 
 s:redraw()
 
 while true do
   local ev = s:pullEvent()
-  print1(table.unpack(ev))
   if ev == "btn" then
     --local d = gui.Dialog.new(43, 10, s)
     local d = gui.MessageBox.new("This is MessageBox", nil, s)
@@ -41,6 +40,10 @@ while true do
     gpu.setForeground(0xffffff)
     term.setCursor(1,1)
     break
+  end
+  if type(ev) == "table" then
+    term.setCursor(1,1)
+    print(table.unpack(ev))
   end
 end
 
