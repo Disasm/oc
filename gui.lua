@@ -222,7 +222,7 @@ function Label.new(xSize, text, alignLeft)
     if alignLeft then
       dx = 0
     else
-      dx = math.floor((self.xSize - string.len(self.text)) / 2)
+      dx = math.floor((self.xSize - unicode.wlen(self.text)) / 2)
     end
     gpu.set(self.x + dx, self.y, text)
   end
