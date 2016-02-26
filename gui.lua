@@ -11,6 +11,30 @@ local aux = {
   arrowDown = 9044,
 }
 
+local currentOwner = nil
+
+function filterEvent(event)
+  if event[1] ~= "touch" then
+    return
+  end
+  local w,h = gpu.getResolution()
+  if event[3] == w and event[4] == 1 then
+    currentOwner = nil
+    error("exit")
+    return
+  end
+  if currentOwner == nil then
+    currentOwner = event[6]
+    return event
+  else
+    if currentOwner ~= event[6] then
+      return
+    else
+      return event
+    end
+  end
+end
+
 function aux:drawBox(x, y, w, h, double)
   local chars
   if double then
@@ -493,12 +517,16 @@ function Screen.new(bgColor)
   w.y = 1
   w.backgroundColor = bgColor or 0x000000
   w.foregroundColor = 0xffffff
+  w:addChild(SimpleButton.new(1, 1, "exit", "X"), w.xSize-1, 0)
   w.pullEvent = function(self)
     while true do
       local ev = table.pack(event.pull("touch"))
-      ev = self:translateEvent(ev)
+      ev = filterEvent(ev)
       if ev ~= nil then
-        return ev
+        ev = self:translateEvent(ev)
+        if ev ~= nil then
+          return ev
+        end
       end
     end
   end
@@ -525,9 +553,12 @@ function Dialog.new(xSize, ySize, parent)
     local ev
     while true do
       ev = table.pack(event.pull("touch"))
-      ev = self:translateEvent(ev)
+      ev = filterEvent(ev)
       if ev ~= nil then
-        break
+        ev = self:translateEvent(ev)
+        if ev ~= nil then
+          break
+        end
       end
     end
     if self.dialogParent ~= nil then
