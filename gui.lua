@@ -215,8 +215,8 @@ function Label.new(xSize, text, alignLeft)
   w.draw = function(self)
     w:clear()
     local text = self.text
-    if string.len(text) > self.xSize then
-      text = string.sub(text, 1, self.xSize)
+    if unicode.wlen(text) > self.xSize then
+      text = unicode.sub(text, 1, self.xSize)
     end
     local dx
     if alignLeft then
