@@ -17,9 +17,9 @@ file_serialization.load = function(filename)
   return serialization.unserialize(s)
 end
 
-file_serialization.save = function(filename, object) 
+file_serialization.save = function(filename, object, pretty)
   local f = filesystem.open(filename, "w")
-  f:write(serialization.serialize(object))
+  f:write(serialization.serialize(object, pretty))
   f:close()
 end
 
