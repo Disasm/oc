@@ -436,6 +436,7 @@ function Table.new(xSize, ySize, values, widths)
   
   w:addChild(SimpleButton.new(2, 1, "up", unicode.char(aux.arrowUp)..unicode.char(aux.arrowUp)), xSize-2, 0)
   w:addChild(SimpleButton.new(2, 1, "down", unicode.char(aux.arrowDown)..unicode.char(aux.arrowDown)), xSize-2, ySize-1)
+  local disableScroll = (w.ySize >= #values)
   for y = 1,w.ySize do
     w.tab_labels[y] = {}
     local row = values[y]
@@ -456,16 +457,16 @@ function Table.new(xSize, ySize, values, widths)
   w.translateEvent = function(self, event)
     local ev = oldTranslateEvent(self, event)
     if ev ~= nil then
-      if ev == "up" then
+      if (ev == "up") and (not disableScroll) then
         w.tab_offset = w.tab_offset - 1
       end
-      if ev == "down" then
+      if (ev == "down") and (not disableScroll) then
         w.tab_offset = w.tab_offset + 1
       end
       if w.tab_offset < 0 then
         w.tab_offset = 0
       end
-      if w.tab_offset > (#w.tab_values-ySize) then
+      if (w.tab_offset > (#w.tab_values-ySize)) and (not disableScroll) then
         w.tab_offset = (#w.tab_values-ySize)
       end
       w:redraw()
