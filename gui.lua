@@ -189,6 +189,8 @@ function Widget.new(xSize, ySize, event)
   w.clear = function(self)
     gpu.fill(self.x, self.y, self.xSize, self.ySize, " ")
   end
+  w.update = function(self)
+  end
   return w
 end
 function Widget.new0()
@@ -549,16 +551,24 @@ function Dialog.new(xSize, ySize, parent)
       local child = self.children[i]
       child:updatePosition()
     end
+    if pcall(self.update, self) == false then return end
     self:draw()
+
     local ev
     while true do
-      ev = table.pack(event.pull("touch"))
-      ev = filterEvent(ev)
+      ev = table.pack(event.pull(0.2, "touch"))
       if ev ~= nil then
-        ev = self:translateEvent(ev)
+        ev = filterEvent(ev)
         if ev ~= nil then
-          break
+          ev = self:translateEvent(ev)
+          if ev ~= nil then
+            break
+          end
         end
+      end
+      if pcall(self.update, self) == false then
+        ev = nil
+        break
       end
     end
     if self.dialogParent ~= nil then
@@ -610,7 +620,7 @@ function MessageBox.new(text, buttons, parent)
 end
 
 
-export = {
+gui = {
   Label = Label,
   Frame = Frame,
   ShadowedFrame = ShadowedFrame,
@@ -623,5 +633,9 @@ export = {
   Screen = Screen,
   Dialog = Dialog,
   MessageBox = MessageBox,
+
+  getCurrentOwner = function()
+    return currentOwner
+  end,
 }
-return export
+return gui
