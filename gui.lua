@@ -168,6 +168,9 @@ function Widget.new(xSize, ySize, event)
     end
     return self.event
   end
+  w.filterEvent = function(self, event)
+    return event
+  end
   w.drawChildren = function(self)
     for i = 1,#self.children do
       local child = self.children[i]
@@ -562,7 +565,10 @@ function Dialog.new(xSize, ySize, parent)
         if ev ~= nil then
           ev = self:translateEvent(ev)
           if ev ~= nil then
-            break
+            ev = self:filterEvent(ev)
+            if ev ~= nil then
+              break
+            end
           end
         end
       end
