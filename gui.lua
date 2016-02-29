@@ -441,7 +441,11 @@ function Table.new(xSize, ySize, values, widths)
     local row = values[y]
     local offset = 0
     for x = 1,#widths do
-      local label = Label.new(widths[x], tostring(values[y][x]), true)
+      local value = ""
+      if values[y] ~= nil then
+        value = values[y][x] or ""
+      end
+      local label = Label.new(widths[x], tostring(value), true)
       w:addChild(label, offset, y-1)
       w.tab_labels[y][x] = label
       offset = offset + widths[x]
@@ -494,7 +498,11 @@ function Table.new(xSize, ySize, values, widths)
     end
 
     local yindex = 1 + y + w.tab_offset
-    return {yindex, xindex}
+    if yindex > #w.tab_values then
+      return
+    else
+      return {yindex, xindex}
+    end
   end
   w.draw = function(self)
     self:clear()
