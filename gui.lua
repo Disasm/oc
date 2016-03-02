@@ -11,11 +11,15 @@ local aux = {
   arrowDown = 9044,
 }
 
+local restrictEvents = false
 local currentOwner = nil
 
 function filterEvent(event)
   if event[1] ~= "touch" then
     return
+  end
+  if not restrictEvents then
+    return event
   end
   local w,h = gpu.getResolution()
   if event[3] == w and event[4] == 1 then
