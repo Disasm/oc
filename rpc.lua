@@ -16,7 +16,16 @@ local rpcWrapper = {
     return rpcObject ~= nil
   end,
 
-  c = function(self, method, ...)
+  c = function(self, funcName, ...)
+    if rpcObject == nil then
+      error("RPC object is not ready", 2)
+    else
+      local func = rpcObject[funcName]
+      if func == nil then
+        error("RPC object does not contain function "..tostring(funcName), 2)
+      end
+      return func(...)
+    end
   end,
 }
 
@@ -81,7 +90,7 @@ function rpc.pull()
       local funcName = tostring(r[6])
       local func = rpcWrapper[funcName]
       if func ~= nil then
-        local args = func(rpcWrapper, table.unpack(r, 7))
+        local args = pcall(func, rpcWrapper, table.unpack(r, 7))
       else
         modem.send(r[3], rpcPort, false, "no such method: "..funcName)
       end
