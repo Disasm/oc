@@ -1,4 +1,5 @@
 local component = require("component")
+local event = require("event")
 local modem = component.modem
 
 local localAddress = modem.address
@@ -80,6 +81,7 @@ function rpc.connect(address, timeout, retries)
 end
 
 function rpc.bind(obj)
+  modem.open(rpcPort)
   rpcObject = obj
 end
 
