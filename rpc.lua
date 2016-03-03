@@ -3,7 +3,8 @@ local event = require("event")
 local modem = component.modem
 
 local localAddress = modem.address
-local rpcPort = 111
+local rpcRequestPort = 111
+local rpcResponsePort = 112
 local defaultTimeout = 5
 local defaultRetries = 4
 
@@ -34,17 +35,17 @@ local rpcWrapper = {
 local rpc = {}
 
 function transact(remoteAddress, request, timeout, retries)
-  modem.send(remoteAddress, rpcPort, table.unpack(request))
+  modem.send(remoteAddress, rpcRequestPort, table.unpack(request))
   local timeout1 = timeout / (retries + 1)
   local nretry = 0
   while nretry < retries do
-    local r = table.pack(event.pull(timeout1, "modem_message", localAddress, remoteAddress))
+    local r = table.pack(event.pull(timeout1, "modem_message", localAddress, remoteAddress, rpcResponsePort))
     if r.n > 0 then
       return table.pack(table.unpack(r, 6))
     else
       -- resend
       nretry = nretry + 1
-      modem.send(remoteAddress, rpcPort, table.unpack(request))
+      modem.send(remoteAddress, rpcRequestPort, table.unpack(request))
     end
   end
 end
@@ -61,7 +62,7 @@ function rpc.connect(address, timeout, retries)
   local timeout = timeout or defaultTimeout
   local retries = retries or defaultRetries
 
-  modem.open(rpcPort)
+  modem.open(rpcResponsePort)
   local wrapper = { address = address }
   mt = {
     __index = function(obj, funcName)
@@ -69,7 +70,7 @@ function rpc.connect(address, timeout, retries)
         if not rpcall(obj.address, 1, 1, "ping") then
           error("RPC host unreachable", 2)
         end
-        local r = table.wrap(rpcall(obj.address, timeout, retries, "c", funcName, ...))
+        local r = table.pack(rpcall(obj.address, timeout, retries, "c", funcName, ...))
         if r[1] == false then
           error(r[2], 2)
         end
@@ -81,12 +82,12 @@ function rpc.connect(address, timeout, retries)
 end
 
 function rpc.bind(obj)
-  modem.open(rpcPort)
+  modem.open(rpcRequestPort)
   rpcObject = obj
 end
 
 function on_modem_message(pktSignal, pktLocalAddress, pktRemoteAddress, pktPort, pktDistance, ...)
-  if (pktLocalAddress ~= localAddress) or (pktPort ~= rpcPort) then
+  if (pktLocalAddress ~= localAddress) or (pktPort ~= rpcRequestPort) then
     return
   end
   local r = table.pack(...)
@@ -95,9 +96,9 @@ function on_modem_message(pktSignal, pktLocalAddress, pktRemoteAddress, pktPort,
     local func = rpcWrapper[funcName]
     if func ~= nil then
       local result = table.pack(pcall(func, rpcWrapper, table.unpack(r, 2)))
-      modem.send(pktRemoteAddress, rpcPort, table.unpack(result))
+      modem.send(pktRemoteAddress, rpcResponsePort, table.unpack(result))
     else
-      modem.send(pktRemoteAddress, rpcPort, false, "no such method: "..funcName)
+      modem.send(pktRemoteAddress, rpcResponsePort, false, "no such method: "..funcName)
     end
   end
 end
