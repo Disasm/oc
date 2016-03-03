@@ -27,4 +27,12 @@ function util.makeStack(stack, newSize)
   return newStack
 end
 
+function util.equalThings(stack1, stack2)
+    if (stack1 == nil) or (stack2 == nil) then
+        return false
+    end
+
+    return (stack1.label == stack2.label) and (stack1.name == stack2.name)
+end
+
 return util
