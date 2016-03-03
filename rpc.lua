@@ -85,19 +85,23 @@ function rpc.bind(obj)
   rpcObject = obj
 end
 
-function rpc.pull()
-  while true do
-    local r = table.pack(event.pull("modem_message", localAddress))
-    if r.n > 0 then
-      local funcName = tostring(r[6])
-      local func = rpcWrapper[funcName]
-      if func ~= nil then
-        local args = pcall(func, rpcWrapper, table.unpack(r, 7))
-      else
-        modem.send(r[3], rpcPort, false, "no such method: "..funcName)
-      end
+function on_modem_message(pktSignal, pktLocalAddress, pktRemoteAddress, pktPort, pktDistance, ...)
+  if (pktLocalAddress ~= localAddress) or (pktPort ~= rpcPort) then
+    return
+  end
+  local r = table.pack(...)
+  if r.n > 0 then
+    local funcName = tostring(r[1])
+    local func = rpcWrapper[funcName]
+    if func ~= nil then
+      local result = table.pack(pcall(func, rpcWrapper, table.unpack(r, 2)))
+      modem.send(pktRemoteAddress, rpcPort, table.unpack(result))
+    else
+      modem.send(pktRemoteAddress, rpcPort, false, "no such method: "..funcName)
     end
   end
 end
+
+event.listen("modem_message", on_modem_message)
 
 return rpc
