@@ -5,7 +5,7 @@ local util = require("stack_util")
 
 local outputSide = sides.up
 local outputSlot = 16
-local storageSides = {sides.down}
+local storageSides = {sides.left, sides.right, sides.front, sides.back}
 
 local storageCache = {}
 
@@ -17,7 +17,7 @@ function storage.scan()
 
     local n = transposer.getInventorySize(side)
     for slot=1,n do
-      cache[i] = transposer.getStackInSlot(side, slot);
+      cache[slot] = transposer.getStackInSlot(side, slot);
     end
 
     storageCache[side] = cache
@@ -49,6 +49,7 @@ function storage.moveToOutput(stack)
       end
     end
   end
+  return cnt == 0
 end
 
 function storage.moveToStorage(slot)
@@ -83,8 +84,9 @@ function storage.moveToStorage(slot)
 end
 
 function storage.moveAllToStorage()
-  local n = transposer.getInventorySize(outputSide)
-  for slot=1,n do
+  --local n = transposer.getInventorySize(outputSide)
+  --for slot=1,n do
+  for slot=5,20 do
     local stack = transposer.getStackInSlot(outputSide, slot)
     if stack ~= nil then
       local ok = storage.moveToStorage(slot)
