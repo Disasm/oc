@@ -322,11 +322,8 @@ function SimpleButton.new(xSize, ySize, event, text, color)
   local w = Widget.new(xSize, ySize, event)
   w.backgroundColor = color
   w.draw = function(self)
-    --local oldBg = gpu.getBackground()
-    --gpu.setBackground(self.buttonColor)
     self:clear()
     self:drawChildren()
-    --gpu.setBackground(oldBg)
   end
   w:addChild(Label.new(xSize, text), 0, math.floor(ySize/2))
   return w
@@ -357,16 +354,14 @@ function SpinBox.new(xSize, value, minValue, maxValue, step)
   w.sb_label = Label.new(xSize, tostring(w.sb_value))
   w:addChild(w.sb_label, 1, 0)
 
-  local oldTranslateEvent = w.translateEvent
-  w.translateEvent = function(self, event)
-    local ev = oldTranslateEvent(self, event)
+  w.filterEvent = function(self, ev)
     if ev == nil then
       return
     end
+
     if ev == "less" then
       w.sb_value = w.sb_value - w.sb_step
-    end
-    if ev == "more" then
+    else
       w.sb_value = w.sb_value + w.sb_step
     end
     if w.sb_value < w.sb_minValue then
@@ -404,9 +399,7 @@ function LargeSpinBox.new(xSize, value, minValue, maxValue)
   w:addChild(SimpleButton.new(1, 1, "-10", "-"), dx+1, 2)
   w:addChild(SimpleButton.new(1, 1, "-1", "-"), dx+2, 2)
 
-  local oldTranslateEvent = w.translateEvent
-  w.translateEvent = function(self, event)
-    local ev = oldTranslateEvent(self, event)
+  w.filterEvent = function(self, ev)
     if ev == nil then
       return
     end
