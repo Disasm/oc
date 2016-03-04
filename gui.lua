@@ -536,7 +536,10 @@ function Screen.new(bgColor)
       if ev ~= nil then
         ev = self:translateEvent(ev)
         if ev ~= nil then
-          return ev
+          ev = self:filterEvent(ev)
+          if ev ~= nil then
+            return ev
+          end
         end
       end
     end
