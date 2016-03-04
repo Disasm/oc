@@ -10,6 +10,8 @@ local util = require("stack_util")
 local item_db = require("stack_db")
 local tr = require("tr")
 
+tr.load("/tr_trade.txt")
+
 package.loaded["gui"] = nil
 _G["gui"] = nil
 gui = require("gui")

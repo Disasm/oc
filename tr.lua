@@ -1,34 +1,37 @@
 local file_serialization = require("file_serialization")
 
-tr = {}
+local tr = {}
+local map = nil
+local tr_filename = nil
 
-function tr:load()
-  self.map = file_serialization.load("/tr.txt")
-  if self.map == nil then
-    self.map = {}
+function tr.load(filename)
+  tr_filename = filename or "/tr.txt"
+  map = file_serialization.load(tr_filename)
+  if map == nil then
+    map = {}
   end
 end
 
-function tr:save()
-  file_serialization.save("/tr.txt", self.map, true)
+function tr.save()
+  file_serialization.save(tr_filename, map, true)
 end
 
-function tr:translate(str)
-  if self.map == nil then
-    self:load()
+function tr.translate(str)
+  if map == nil then
+    tr.load()
   end
-  local t = self.map[str]
+  local t = map[str]
   if t == nil then
     t = str
-    self.map[str] = t
-    self:save()
+    map[str] = t
+    tr.save()
   end
   return t
 end
 
 tr = setmetatable(tr, {
   __call = function(t, str)
-    return t:translate(str)
+    return tr.translate(str)
   end
 })
 
