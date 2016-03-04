@@ -1,4 +1,5 @@
 local component = require("component")
+local serialization = require("serialization")
 local event = require("event")
 local modem = component.modem
 
@@ -35,17 +36,24 @@ local rpcWrapper = {
 local rpc = {}
 
 function transact(remoteAddress, request, timeout, retries)
-  modem.send(remoteAddress, rpcRequestPort, table.unpack(request))
+  request.n = nil
+  request = serialization.serialize(request)
+  modem.send(remoteAddress, rpcRequestPort, request)
   local timeout1 = timeout / (retries + 1)
   local nretry = 0
-  while nretry < retries do
+  while true do
     local r = table.pack(event.pull(timeout1, "modem_message", localAddress, remoteAddress, rpcResponsePort))
     if r.n > 0 then
-      return table.pack(table.unpack(r, 6))
+      local result = serialization.unserialize(tostring(r[6]))
+      return result
     else
-      -- resend
       nretry = nretry + 1
-      modem.send(remoteAddress, rpcRequestPort, table.unpack(request))
+      if nretry > retries then
+        break
+      end
+
+      -- resend
+      modem.send(remoteAddress, rpcRequestPort, request)
     end
   end
 end
@@ -92,13 +100,24 @@ function on_modem_message(pktSignal, pktLocalAddress, pktRemoteAddress, pktPort,
   end
   local r = table.pack(...)
   if r.n > 0 then
-    local funcName = tostring(r[1])
-    local func = rpcWrapper[funcName]
-    if func ~= nil then
-      local result = table.pack(pcall(func, rpcWrapper, table.unpack(r, 2)))
-      modem.send(pktRemoteAddress, rpcResponsePort, table.unpack(result))
+    if type(r[1]) == "string" then
+      local args = serialization.unserialize(r[1])
+      if type(args) == "table" then
+        local funcName = tostring(args[1])
+        local func = rpcWrapper[funcName]
+        if func ~= nil then
+          local params = serialization.unserialize(tostring(r[2]))
+          local result = {pcall(func, rpcWrapper, table.unpack(args, 2))}
+          result = serialization.serialize(result)
+          modem.send(pktRemoteAddress, rpcResponsePort, result)
+        else
+          modem.send(pktRemoteAddress, rpcResponsePort, false, "no such method: "..funcName)
+        end
+      else
+        modem.send(pktRemoteAddress, rpcResponsePort, false, "invalid request")
+      end
     else
-      modem.send(pktRemoteAddress, rpcResponsePort, false, "no such method: "..funcName)
+      modem.send(pktRemoteAddress, rpcResponsePort, false, "invalid request type")
     end
   end
 end
