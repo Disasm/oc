@@ -2,11 +2,13 @@ package.path = package.path .. ';/libs/?.lua'
 local component = require("component")
 local file_serialization = require("file_serialization")
 local gpu = component.gpu
+local computer = component.computer
 local transposer = component.transposer
 term = require("term")
 local sides = require("sides")
 local util = require("stack_util")
 local item_db = require("stack_db")
+local tr = require("tr")
 
 package.loaded["gui"] = nil
 _G["gui"] = nil
@@ -23,7 +25,7 @@ item_db:load();
 --addItemToDb({size=1,name="minecraft:gold_ingot",label="Gold Ingot"})
 --addItemToDb({size=1,name="minecraft:redstone",label="Redstone"})
 
-gpu.setResolution(80, 23)
+gpu.setResolution(71, 25)
 
 local inputSide = sides.down
 local outputSide = sides.left
@@ -206,19 +208,26 @@ local quit = false
 
 function mainLoop()
   local s = gui.Screen.new(0x0000f0)
-  s:addChild(gui.SimpleButton.new(10, 1, "exit", "exit", 0xc00000), 5, 7)
-  s:addChild(gui.Button.new(10, 3, "btn", "show", false), 27, 20)
-  s:addChild(gui.Label.new(11, "label"), 10, 4)
+  --s:addChild(gui.SimpleButton.new(10, 1, "exit", "exit", 0xc00000), 5, 7)
+  --s:addChild(gui.Button.new(10, 3, "btn", "show", false), 27, 20)
+  --s:addChild(gui.Label.new(11, "label"), 10, 4)
   --s:addChild(gui.Frame.new(31, 10, 0x00c000), 20, 5):setColor(0x00c000)
-  s:addChild(gui.ShadowedButton.new(10, 1, "exit", "exit", 0xc00000), 5, 12)
-  s:addChild(gui.LargeSpinBox.new(5, 1, 0, 4096, 4), 20, 1):setColor(0x00c0c0)
-  s:addChild(gui.ShadowedButton.new(12, 1, "add_sample", "add sample", 0xc00000), 5, 14)
-  s:addChild(gui.ShadowedButton.new(9, 1, "add_lot", "add lot", 0xc00000), 5, 16)
+  --s:addChild(gui.ShadowedButton.new(10, 1, "exit", "exit", 0xc00000), 5, 12)
+  --s:addChild(gui.LargeSpinBox.new(5, 1, 0, 4096, 4), 20, 1):setColor(0x00c0c0)
+  --s:addChild(gui.ShadowedButton.new(12, 1, "add_sample", "add sample", 0xc00000), 5, 14)
+  --s:addChild(gui.ShadowedButton.new(9, 1, "add_lot", "add lot", 0xc00000), 5, 16)
 
-  s:addChild(gui.SimpleButton.new(9, 1, "add_lot", "my lots", 0x00c000), 0, 0)
+  --s:addChild(gui.SimpleButton.new(9, 1, "add_lot", "my lots", 0x00c000), 0, 0)
 
   s:redraw()
 
+  local d = gui.MessageBox.new(tr("Opening soon"), nil, s)
+  local r = d:exec()
+  computer.beep(523, 0.2);
+  computer.beep(652, 0.2);
+  computer.beep(784, 0.2);
+
+  --[[
   while true do
     local ev = s:pullEvent()
     if ev == "add_sample" then
@@ -243,7 +252,7 @@ function mainLoop()
       term.setCursor(1,1)
       print(table.unpack(ev))
     end
-  end
+  end]]--
 end
 
 clearScreen()
