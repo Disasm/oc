@@ -25,7 +25,7 @@ item_db:load();
 --addItemToDb({size=1,name="minecraft:gold_ingot",label="Gold Ingot"})
 --addItemToDb({size=1,name="minecraft:redstone",label="Redstone"})
 
-gpu.setResolution(71, 25)
+gui.setIdealResolution()
 
 local inputSide = sides.down
 local outputSide = sides.left

@@ -656,5 +656,10 @@ gui = {
   getCurrentOwner = function()
     return currentOwner
   end,
+
+  setIdealResolution = function()
+    -- TODO: use getAspectRatio or getSize
+    gpu.setResolution(71, 25)
+  end,
 }
 return gui
