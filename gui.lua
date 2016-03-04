@@ -313,7 +313,7 @@ function Button.new(xSize, ySize, event, text, double)
   return b
 end
 function Button.dimensions(text)
-  return string.len(text)+2, 3
+  return unicode.len(text)+2, 3
 end
 
 
@@ -340,7 +340,7 @@ function ShadowedButton.new(xSize, ySize, event, text, color)
   return w
 end
 function ShadowedButton.dimensions(text)
-  return string.len(text)+1, 2
+  return unicode.len(text)+1, 2
 end
 
 
@@ -392,7 +392,7 @@ function LargeSpinBox.new(xSize, value, minValue, maxValue)
   w.sb_minValue = minValue or 0
   w.sb_maxValue = maxValue or 100000
   w.sb_step = step or 1
-  
+
   local dx = math.floor((xSize - 3) / 2)
 
   w:addChild(SimpleButton.new(1, 1, "100", "+"), dx+0, 0)
@@ -437,7 +437,7 @@ function Table.new(xSize, ySize, values, widths)
   w.tab_widths = widths
   w.tab_offset = 0
   w.tab_labels = {}
-  
+
   w:addChild(SimpleButton.new(2, 1, "up", unicode.char(aux.arrowUp)..unicode.char(aux.arrowUp)), xSize-2, 0)
   w:addChild(SimpleButton.new(2, 1, "down", unicode.char(aux.arrowDown)..unicode.char(aux.arrowDown)), xSize-2, ySize-1)
   local disableScroll = (w.ySize >= #values)
@@ -488,7 +488,7 @@ function Table.new(xSize, ySize, values, widths)
     else
       return
     end
-    
+
     local xindex = 0
     local offset = 0
     for i=1,#w.tab_widths do
@@ -611,7 +611,7 @@ function MessageBox.new(text, buttons, parent)
   end
 
   -- TODO: multi-line text
-  local textWidth = string.len(text)
+  local textWidth = unicode.len(text)
   local buttonsWidth = #buttons - 1
   for i = 1,#buttons do
     local bw, bh = Button.dimensions(buttons[i][1])
