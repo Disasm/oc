@@ -43,9 +43,9 @@ function storage.moveToOutput(stack)
     for slot,s in pairs(cache) do
       if util.equalThings(s, stack) then
         local take = math.min(s.size, cnt)
-        -- TODO: move items
+        transposer.transferItem(side, outputSide, take, slot)
         cnt = cnt - take
-        -- TODO: update cache
+        cache[slot] = transposer.getStackInSlot(side, slot)
       end
     end
   end
@@ -58,32 +58,28 @@ function storage.moveToStorage(slot)
   end
   local cnt = stack.size
   for side,cache in pairs(storageCache) do
-    for slot,s in pairs(cache) do
+    for slot2,s in pairs(cache) do
       if util.equalThings(s, stack) then
-        -- TODO: get free space
-        local freeSpace = 0
+        local freeSpace = transposer.getSlotMaxStackSize(side, slot2) - s.size
         local take = math.min(freeSpace, cnt)
-        -- TODO: move items
+        transposer.transferItem(outputSide, side, take, slot, slot2)
         cnt = cnt - take
-        -- TODO: update cache
-        cache[slot] = nil
+        cache[slot] = transposer.getStackInSlot(side, slot2)
       end
     end
   end
   for side,cache in pairs(storageCache) do
     local n = transposer.getInventorySize(side)
-    for slot=1,n do
-      local s = cache[slot]
+    for slot2=1,n do
+      local s = cache[slot2]
       if s == nil then
-        -- TODO: move items
-        -- TODO: update cache
-        cache[slot] = nil
-
+        transposer.transferItem(outputSide, side, stack.size, slot, slot2)
+        cache[slot] = transposer.getStackInSlot(side, slot2)
         return true
       end
     end
   end
-  return cnt > 0
+  return cnt == 0
 end
 
 function storage.moveAllToStorage()
