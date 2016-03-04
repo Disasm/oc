@@ -535,7 +535,7 @@ function Screen.new(bgColor)
   w.y = 1
   w.backgroundColor = bgColor or 0x000000
   w.foregroundColor = 0xffffff
-  w:addChild(SimpleButton.new(1, 1, "exit", "X"), w.xSize-1, 0)
+  --w:addChild(SimpleButton.new(1, 1, "exit", "X"), w.xSize-1, 0)
   w.pullEvent = function(self)
     while true do
       local ev = table.pack(event.pull("touch"))
