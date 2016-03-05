@@ -51,7 +51,7 @@ function inputSample(parent)
   clearInputChest()
 
   local i = 0
-  local d = gui.MessageBox.new(tr("Drop items on hopper"), {tr("Cancel"), "cancel"}, parent)
+  local d = gui.MessageBox.new(tr("Bros'te predmeti na robota"), {tr("Otmena"), "cancel"}, parent)
   d.update = function(self)
     i = i + 1
     local s = transposer.getStackInSlot(inputSide, 1)
@@ -69,7 +69,7 @@ function inputSample(parent)
   end
 
   if stack == nil then
-    local d = gui.MessageBox.new(tr("No items"), nil, parent)
+    local d = gui.MessageBox.new(tr("Net predmetov"), nil, parent)
     d:setColor(0xcc0000)
     local r = d:exec()
     return
@@ -88,7 +88,7 @@ function inputFromDb(parent)
   end
 
   d:addChild(gui.Table.new(d.xSize-4, d.ySize-4, t, {d.xSize-6}), 0, 0)--:setColor(0xc0c000)
-  d:addChild(gui.SimpleButton.new(10, 1, "cancel", tr("cancel"), 0x00c000), d.xSize-10-4, 9)
+  d:addChild(gui.SimpleButton.new(10, 1, "cancel", tr("cancel")), d.xSize-10-4, 9):setColor(0x00c000)
   local ev = d:exec()
   if ev == "cancel" then
     return
@@ -107,30 +107,30 @@ function inputLot(parent)
   local selectedTextColor = 0x00c000
   local stack1 = nil
   local stack2 = nil
-  local item1Name = "not set"
-  local item2Name = "not set"
+  local item1Name = tr("ne vibran")
+  local item2Name = tr("ne vibran")
   local d = gui.Dialog.new(48, 10, parent)
   local label1 = gui.Label.new(20, item1Name, true)
   local label2 = gui.Label.new(20, item2Name, true)
-  d:addChild(gui.Label.new(46, tr("Create lot")), 0, 0)
-  d:addChild(gui.Label.new(10, tr("You sell:"), true), 1, 1)
-  d:addChild(gui.Label.new(5, tr("Item:")), 2, 2)
-  d:addChild(label1, 9, 2)
-  d:addChild(gui.Label.new(6, tr("Count:")), 2, 3)
-  d:addChild(gui.SpinBox.new(5, 1, 1, 64, 1), 9, 3)--:setColor(0x00c0c0)
-  d:addChild(gui.SimpleButton.new(8, 1, "select1", tr("select"), 0x00c000), 30, 2)
-  d:addChild(gui.SimpleButton.new(8, 1, "sample1", tr("sample"), 0x00c000), 39, 2)
+  d:addChild(gui.Label.new(46, tr("Sozdanie lota")), 0, 0)
+  d:addChild(gui.Label.new(35, tr("Vi daete drugomu igroku:"), true), 1, 1)
+  d:addChild(gui.Label.new(8, tr("Predmet:")), 2, 2)
+  d:addChild(label1, 11, 2)
+  d:addChild(gui.Label.new(11, tr("Koli4estvo:")), 2, 3)
+  d:addChild(gui.SpinBox.new(5, 1, 1, 64, 1), 14, 3)--:setColor(0x00c0c0)
+  d:addChild(gui.SimpleButton.new(7, 1, "select1", tr("vibor")), 30, 2):setColor(0x00c000)
+  d:addChild(gui.SimpleButton.new(9, 1, "sample1", tr("obrazec")), 38, 2):setColor(0x00c000)
 
-  d:addChild(gui.Label.new(10, tr("You buy:"), true), 1, 5)
-  d:addChild(gui.Label.new(5, tr("Item:")), 2, 6)
-  d:addChild(label2, 9, 6):setTextColor(0x00c000)
-  d:addChild(gui.Label.new(6, tr("Count:")), 2, 7)
-  d:addChild(gui.SpinBox.new(5, 1, 1, 64, 1), 9, 7)--:setColor(0x00c0c0)
-  d:addChild(gui.SimpleButton.new(8, 1, "select2", tr("select"), 0x00c000), 30, 6)
-  d:addChild(gui.SimpleButton.new(8, 1, "sample2", tr("sample"), 0x00c000), 39, 6)
+  d:addChild(gui.Label.new(35, tr("Vi polu4aete ot drugogo igroka:"), true), 1, 5)
+  d:addChild(gui.Label.new(8, tr("Predmet:")), 2, 6)
+  d:addChild(label2, 11, 6):setTextColor(0x00c000)
+  d:addChild(gui.Label.new(11, tr("Koli4estvo:")), 2, 7)
+  d:addChild(gui.SpinBox.new(5, 1, 1, 64, 1), 14, 7)--:setColor(0x00c0c0)
+  d:addChild(gui.SimpleButton.new(7, 1, "select2", tr("vibor")), 30, 6):setColor(0x00c000)
+  d:addChild(gui.SimpleButton.new(9, 1, "sample2", tr("obrazec")), 38, 6):setColor(0x00c000)
 
-  d:addChild(gui.SimpleButton.new(10, 1, "create", tr("create"), 0x00c000), 1, 9)
-  d:addChild(gui.SimpleButton.new(10, 1, "cancel", tr("cancel"), 0x00c000), d.xSize-10-4, 9)
+  d:addChild(gui.SimpleButton.new(9, 1, "create", tr("sozdat'")), 1, 9):setColor(0x00c000)
+  d:addChild(gui.SimpleButton.new(10, 1, "cancel", tr("otmena")), d.xSize-10-4, 9):setColor(0x00c000)
 
   d.filterEvent = function(self, ev)
     if (ev == "sample1") or (ev == "sample2") then
@@ -159,7 +159,7 @@ function inputLot(parent)
 
     if ev == "create" then
       if (stack1 == nil) or (stack2 == nil) then
-        local d = gui.MessageBox.new(tr("Select items first!"), nil, d)
+        local d = gui.MessageBox.new(tr("Sna4ala viberite predmeti!"), nil, d)
         d:setColor(0xcc0000)
         local r = d:exec()
         return ""
@@ -175,14 +175,14 @@ function inputLot(parent)
     local color2
 
     if stack1 == nil then
-      item1Name = "not set"
+      item1Name = tr("ne vibran")
       color1 = defaultTextColor
     else
       item1Name = stack1.label
       color1 = selectedTextColor
     end
     if stack2 == nil then
-      item2Name = "not set"
+      item2Name = tr("ne vibran")
       color2 = defaultTextColor
     else
       item2Name = stack2.label
@@ -210,16 +210,16 @@ local quit = false
 
 function mainLoop()
   local s = gui.Screen.new(0x0000f0)
-  --s:addChild(gui.SimpleButton.new(10, 1, "exit", "exit", 0xc00000), 5, 7)
+  --s:addChild(gui.SimpleButton.new(10, 1, "exit", "exit"), 5, 7):setColor(0xc00000)
   --s:addChild(gui.Button.new(10, 3, "btn", "show", false), 27, 20)
   --s:addChild(gui.Label.new(11, "label"), 10, 4)
   --s:addChild(gui.Frame.new(31, 10, 0x00c000), 20, 5):setColor(0x00c000)
-  --s:addChild(gui.ShadowedButton.new(10, 1, "exit", "exit", 0xc00000), 5, 12)
+  --s:addChild(gui.ShadowedButton.new(10, 1, "exit", "exit"), 5, 12):setColor(0xc00000)
   --s:addChild(gui.LargeSpinBox.new(5, 1, 0, 4096, 4), 20, 1):setColor(0x00c0c0)
-  --s:addChild(gui.ShadowedButton.new(12, 1, "add_sample", "add sample", 0xc00000), 5, 14)
-  --s:addChild(gui.ShadowedButton.new(9, 1, "add_lot", "add lot", 0xc00000), 5, 16)
+  --s:addChild(gui.ShadowedButton.new(12, 1, "add_sample", "add sample"), 5, 14):setColor(0xc00000)
+  --s:addChild(gui.ShadowedButton.new(9, 1, "add_lot", "add lot"), 5, 16):setColor(0xc00000)
 
-  --s:addChild(gui.SimpleButton.new(9, 1, "add_lot", "my lots", 0x00c000), 0, 0)
+  --s:addChild(gui.SimpleButton.new(9, 1, "add_lot", "my lots"), 0, 0):setColor(0x00c000)
 
   s:redraw()
 
