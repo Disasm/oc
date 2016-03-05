@@ -4,7 +4,7 @@ local filesystem = require("filesystem")
 
 local file_serialization = {}
 
-file_serialization.load = function(filename) 
+file_serialization.load = function(filename)
   f = filesystem.open(filename, "r")
   if f == nil then return nil end
   local s = ""
@@ -17,9 +17,9 @@ file_serialization.load = function(filename)
   return serialization.unserialize(s)
 end
 
-file_serialization.save = function(filename, object, pretty)
+file_serialization.save = function(filename, object)
   local f = filesystem.open(filename, "w")
-  f:write(serialization.serialize(object, pretty))
+  f:write(serialization.serialize(object, true))
   f:close()
 end
 
