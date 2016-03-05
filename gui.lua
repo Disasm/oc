@@ -166,7 +166,10 @@ function Widget.new(xSize, ySize, event)
       if inBox(event, child) then
         local ev = child:translateEvent(event)
         if ev ~= nil then
-          return ev
+          ev = self:filterEvent(ev)
+          if ev ~= nil then
+            return ev
+          end
         end
       end
     end
