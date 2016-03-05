@@ -206,9 +206,8 @@ end
 
 
 local ShadowedWidget = {}
-function ShadowedWidget.new(xSize, ySize, event, color)
+function ShadowedWidget.new(xSize, ySize, event)
   local w = Widget.new(xSize+1, ySize+1, event)
-  w.backgroundColor = color
   w.draw = function(self)
     -- clear
     gpu.setBackground(self.backgroundColor)
@@ -287,8 +286,8 @@ end
 
 
 local ShadowedFrame = {}
-function ShadowedFrame.new(xSize, ySize, color, double)
-  local w = ShadowedWidget.new(xSize+2, ySize+2, nil, color)
+function ShadowedFrame.new(xSize, ySize, double)
+  local w = ShadowedWidget.new(xSize+2, ySize+2, nil)
   w.double = not not double
 
   w:addChild(Frame.new(xSize, ySize, double), 0, 0)
@@ -318,9 +317,8 @@ end
 
 
 local SimpleButton = {}
-function SimpleButton.new(xSize, ySize, event, text, color)
+function SimpleButton.new(xSize, ySize, event, text)
   local w = Widget.new(xSize, ySize, event)
-  w.backgroundColor = color
   w.draw = function(self)
     self:clear()
     self:drawChildren()
@@ -331,8 +329,8 @@ end
 
 
 local ShadowedButton = {}
-function ShadowedButton.new(xSize, ySize, event, text, color)
-  local w = ShadowedWidget.new(xSize, ySize, event, color)
+function ShadowedButton.new(xSize, ySize, event, text)
+  local w = ShadowedWidget.new(xSize, ySize, event)
   w:addChild(Label.new(xSize, text), 0, math.floor(ySize/2))
   return w
 end
@@ -550,7 +548,8 @@ end
 
 local Dialog = {}
 function Dialog.new(xSize, ySize, parent)
-  local w = ShadowedFrame.new(xSize, ySize, 0x404040, false)
+  local w = ShadowedFrame.new(xSize, ySize, false)
+  w:setColor(0x404040)
 
   local sw, sh = gpu.getResolution()
   w.relx = 0
