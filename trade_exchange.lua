@@ -30,14 +30,20 @@ function ex:addLot(username, fromStack, toStack, count)
   local lot = {}
   self.lots.n = self.lots.n + 1
   lot.id = self.lots.n
-  
+
   local n = gcd(fromStack.size, toStack.size)
-  
+
   lot.from = makeStack(fromStack, math.floor(fromStack.size / n))
   lot.to = makeStack(toStack, math.floor(toStack.size / n))
   lot.count = count * n
   lot.username = username
   self.lots[lot.id] = lot
+
+  self:save()
+end
+
+function ex:getAllLots()
+  return self.lots
 end
 
 function ex:exchange(lotId, username2, count)
@@ -75,15 +81,15 @@ function ex:getMaxExchangeCount(lotId, username2)
   if username2 == lot.username then
     return 0
   end
-  
+
   local fromStack = makeStack(lot.from)
   local toStack = makeStack(lot.to)
-  
+
   local cnt1 = item_db:getStackSize(username2, fromStack)
   local cnt2 = item_db:getStackSize(lot.username, toStack)
   local free1 = item_db:getFreeSpaceForStack(username2, toStack)
   local free2 = item_db:getFreeSpaceForStack(lot.username, fromStack)
-  
+
   local n1 = math.floor(cnt1 / fromStack.size)
   local n2 = math.floor(cnt2 / toStack.size)
   local n3 = math.floor(free1 / toStack.size)
