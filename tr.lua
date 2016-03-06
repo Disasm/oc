@@ -13,7 +13,7 @@ function tr.load(filename)
 end
 
 function tr.save()
-  file_serialization.save(tr_filename, map, true)
+  file_serialization.save(tr_filename, map)
 end
 
 function tr.translate(str)

@@ -19,7 +19,7 @@ end
 
 file_serialization.save = function(filename, object)
   local f = filesystem.open(filename, "w")
-  f:write(serialization.serialize(object, true))
+  f:write(serialization.serialize(object))
   f:close()
 end
 
