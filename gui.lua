@@ -7,11 +7,11 @@ local aux = {
   --              tl      tr      br      bl      hor     vert
   singleChars = { 0x250c, 0x2510, 0x2518, 0x2514, 0x2500, 0x2502 },
   doubleChars = { 0x2554, 0x2557, 0x255d, 0x255a, 0x2550, 0x2551 },
-  arrowUp = 9037,
-  arrowDown = 9044,
+  arrowUp = 0x25b2,
+  arrowDown = 0x25bc,
 }
 
-local restrictEvents = false
+local restrictEvents = true
 local currentOwner = nil
 
 function filterEvent(event)
@@ -321,6 +321,8 @@ end
 
 local SimpleButton = {}
 function SimpleButton.new(xSize, ySize, event, text)
+  xSize = xSize or (unicode.len(text)+2)
+  ySize = ySize or 1
   local w = Widget.new(xSize, ySize, event)
   w.draw = function(self)
     self:clear()
@@ -431,9 +433,14 @@ function Table.new(xSize, ySize, values, widths)
   w.tab_widths = widths
   w.tab_offset = 0
   w.tab_labels = {}
+  w.evenColor = 0x000000
+  w.oddColor = 0x000000
+  w.scrollbarColor = 0x333333
 
-  w:addChild(SimpleButton.new(2, 1, "up", unicode.char(aux.arrowUp)..unicode.char(aux.arrowUp)), xSize-2, 0)
-  w:addChild(SimpleButton.new(2, 1, "down", unicode.char(aux.arrowDown)..unicode.char(aux.arrowDown)), xSize-2, ySize-1)
+  local b1 = w:addChild(Label.new(2, unicode.char(aux.arrowUp)..unicode.char(aux.arrowUp)), xSize-2, 0)
+  local b2 = w:addChild(Label.new(2, unicode.char(aux.arrowDown)..unicode.char(aux.arrowDown)), xSize-2, ySize-1)
+  b1.event = "up"
+  b2.event = "down"
   local disableScroll = (w.ySize >= #values)
   for y = 1,w.ySize do
     w.tab_labels[y] = {}
@@ -444,7 +451,11 @@ function Table.new(xSize, ySize, values, widths)
       if values[y] ~= nil then
         value = values[y][x] or ""
       end
-      local label = Label.new(widths[x], tostring(value), true)
+      local labelWidth = widths[x] - 1
+      if labelWidth <= 0 then
+        labelWidth = 1
+      end
+      local label = Label.new(labelWidth, tostring(value), true)
       w:addChild(label, offset, y-1)
       w.tab_labels[y][x] = label
       offset = offset + widths[x]
@@ -512,7 +523,37 @@ function Table.new(xSize, ySize, values, widths)
         end
       end
     end
-    self:drawChildren()
+
+    local oldBg = gpu.setBackground(self.scrollbarColor)
+    gpu.fill(self.x+self.xSize-2, self.y, 2, self.ySize, " ")
+    gpu.setBackground(oldBg)
+
+    for y=1,self.ySize do
+      local color
+      if (y%2) == 1 then
+        color = self.evenColor
+      else
+        color = self.oddColor
+      end
+      local oldBg = gpu.setBackground(color)
+      gpu.fill(self.x, self.y + y - 1, self.xSize - 2, 1, " ")
+      gpu.setBackground(oldBg)
+    end
+    -- drow children without coloring
+    for i = 1,#self.children do
+      local child = self.children[i]
+      local _,_,oldBg = gpu.get(child.x, child.y)
+      oldBg = gpu.setBackground(oldBg)
+      local oldFg = gpu.setForeground(child.foregroundColor or 0xffffff)
+      child:draw()
+      gpu.setForeground(oldFg)
+      gpu.setBackground(oldBg)
+    end
+  end
+  w.setRowColors = function(self, evenColor, oddColor)
+    self.evenColor = evenColor
+    self.oddColor = oddColor
+    return self
   end
 
   return w
@@ -529,7 +570,7 @@ function Screen.new(bgColor)
   w.y = 1
   w.backgroundColor = bgColor or 0x000000
   w.foregroundColor = 0xffffff
-  --w:addChild(SimpleButton.new(1, 1, "exit", "X"), w.xSize-1, 0)
+  w:addChild(SimpleButton.new(1, 1, "exit", "X"), w.xSize-1, 0)
   w.pullEvent = function(self)
     while true do
       local ev = table.pack(event.pull("touch"))
@@ -653,6 +694,10 @@ gui = {
 
   getCurrentOwner = function()
     return currentOwner
+  end,
+
+  clearCurrentOwner = function()
+    currentOwner = nil
   end,
 
   setIdealResolution = function()
