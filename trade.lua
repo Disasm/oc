@@ -8,12 +8,14 @@ term = require("term")
 local sides = require("sides")
 local util = require("stack_util")
 local item_db = require("stack_db")
+local trade_db = require("trade_db")
 local tr = require("tr")
 local unicode = require("unicode")
 local exchange = require("trade_exchange")
 
 
 exchange:load();
+trade_db:load();
 tr.load("/tr_trade.txt")
 
 package.loaded["gui"] = nil
@@ -208,7 +210,7 @@ function inputLot(parent)
 
     local ev = d:exec()
     if ev == "cancel" then
-      return
+      return false
     end
     if ev == "create" then
       break
@@ -221,6 +223,7 @@ function inputLot(parent)
     stack2.size = size2.sb_value
     exchange:addLot(username, stack1, stack2, count.sb_value)
   end
+  return true
 end
 
 function stackToString(s)
@@ -282,7 +285,7 @@ function showUserLots(s)
     return
   end
 
-  local d = gui.Dialog.new(s.xSize-10, s.ySize-4, parent)
+  local d = gui.Dialog.new(s.xSize-10, s.ySize-4, s)
 
   -- lot table
   local lots = exchange:getAllLots()
@@ -312,11 +315,65 @@ function showUserLots(s)
   local r = d:exec()
 end
 
+local initialStacks = {
+    {label="Stone", size=64},
+    {label="Diamonds", size=3},
+    {label="Computer case Tier 3", size=2},
+  }
+
+function showAddDepositsScreen(parent)
+
+end
+
+function showDepositsScreen(parent)
+  local username = gui.getCurrentOwner()
+  if username == nil then
+    return false
+  end
+
+  local w, h = gpu.getResolution()
+  local d = gui.Dialog.new(math.floor(w*0.8), math.floor(h*0.8), parent)
+
+  local cw, ch = d:contentSize()
+
+  d:addChild(gui.Label.new(cw, tr("Balans i depositi")), 0, 0)
+
+  local stacks = trade_db:getAllUserStacks(username)
+  stacks = initialStacks
+  local t = {}
+  for _,stack in ipairs(stacks) do
+    t[#t+1] = {stackToString(stack), tr("zabrat'")}
+  end
+  local sizeLabel = 8
+  local sizeStack = cw - 2 - sizeLabel
+  local tbl = d:addChild(gui.Table.new(cw, ch-4, t, {sizeStack, sizeLabel}), 0, 2):setRowColors(0x000000, 0x111111)--:setColor(0xc0c000)
+  tbl.filterEvent = function(self, ev)
+    if type(ev) == "table" then
+      local row = ev[1]
+      if ev[2] == 2 then
+        table.remove(initialStacks, row)
+        return 'respawn'
+      end
+    end
+  end
+
+  local btnAdd = d:addChild(gui.SimpleButton.new(nil, nil, "add", tr("dobavit'")), 0, ch-1):setColor(0x00c000)
+  btnAdd.filterEvent = function(self, ev)
+    local mb = gui.MessageBox.new("Add items", nil, d)
+    local r = mb:exec()
+  end
+
+  local btn = gui.SimpleButton.new(nil, nil, "close", tr("zakrit'"))
+  d:addChild(btn, cw-btn.xSize, ch-1):setColor(0x00c000)
+
+  return d:exec()
+end
+
 local quit = false
 
 function mainLoop()
   local s = gui.Screen.new(0)
-  s:addChild(gui.SimpleButton.new(10, 1, "exit", "exit"), 10, 0):setColor(0xc00000)
+  --s:addChild(gui.SimpleButton.new(10, 1, "exit", "exit"), 10, 0):setColor(0xc00000)
 
   drawMainScreen(s)
 
@@ -339,13 +396,23 @@ function mainLoop()
       return
     end
     if ev == "add_lot" then
-      local s = inputLot(s)
-      local d = gui.MessageBox.new(tr("Teper' vam nuzhno dobavit' predmeti v razdele \"inventar'\""), nil, s)
-      local r = d:exec()
+      if inputLot(s) ==true then
+        local mb = gui.MessageBox.new(tr("Teper' vam nuzhno dobavit' predmeti v razdele \"inventar'\""), nil, s)
+        mb:exec()
+      end
       return
     end
     if ev == "my_lots" then
       showUserLots(s)
+      return
+    end
+    if ev == "inventory" then
+      while true do
+        local r = showDepositsScreen(s)
+        if r ~= 'respawn' then
+          break
+        end
+      end
       return
     end
     if ev == "btn" then
