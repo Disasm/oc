@@ -1,4 +1,5 @@
 local file_serialization = require("file_serialization")
+local util = require("stack_util")
 
 local stacksPerUser = 5
 
@@ -32,6 +33,18 @@ function db:save()
   file_serialization.save("/user_items.txt", self.items)
 end
 
+function db:getAllUserStacks(username)
+  local items = self.items[username]
+  if items == nil then
+    return {}
+  end
+  local r = {}
+  for _,stack in ipairs(items) do
+    r[#r+1] = util.makeStack(stack)
+  end
+  return r
+end
+
 function db:getStackSize(username, stack)
   local items = self.items[username]
   if items == nil then
@@ -51,7 +64,7 @@ function db:addStack(username, stack)
     items = {}
     self.items[username] = items
   end
-  
+
   local hash = stackHash(stack)
   local s = items[hash]
   if s == nil then
@@ -77,7 +90,7 @@ function db:getFreeSpaceForStack(username, stack)
     items = {}
     self.items[username] = items
   end
-  
+
   local hash = stackHash(stack)
 
   local n = 0
