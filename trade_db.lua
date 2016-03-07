@@ -77,6 +77,7 @@ function db:addStack(username, stack)
   else
     items[hash] = nil
   end
+  self:save()
 end
 
 function db:removeStack(username, stack)
