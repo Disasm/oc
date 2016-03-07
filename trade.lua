@@ -12,7 +12,8 @@ local trade_db = require("trade_db")
 local tr = require("tr")
 local unicode = require("unicode")
 local exchange = require("trade_exchange")
-
+local storage = require("trade_storage")
+local trade_robot = require("trade_robot_api")
 
 exchange:load();
 trade_db:load();
@@ -321,8 +322,31 @@ local initialStacks = {
     {label="Computer case Tier 3", size=2},
   }
 
-function showAddDepositsScreen(parent)
+function showAddDepositsScreen(username, parent)
+  trade_robot.startGathering()
+  local d = gui.MessageBox.new(tr("Bros'te predmeti na robota"), {tr("Prodolzhit'"), "continue"}, parent)
+  d:exec()
+  trade_robot.stopGathering()
 
+  local ok = true
+  for slot=1,storage.getOutputInventorySize() do
+    local s = storage.getStackInOutputSlot(slot)
+    if s ~= nil then
+      local freeSpace = trade_db:getFreeSpaceForStack(username, s)
+      if freeSpace < s.size then
+        ok = false
+        break
+      else
+        storage.moveToStorage(slot)
+        trade_db:addStack(username, s)
+      end
+    end
+  end
+  if not ok then
+    local mb = gui.MessageBox.new(tr("Nedostatochno mesta"), nil, d)
+    local r = mb:exec()
+  end
+  trade_robot.dropAll()
 end
 
 function showDepositsScreen(parent)
@@ -339,7 +363,7 @@ function showDepositsScreen(parent)
   d:addChild(gui.Label.new(cw, tr("Balans i depositi")), 0, 0)
 
   local stacks = trade_db:getAllUserStacks(username)
-  stacks = initialStacks
+  --stacks = initialStacks
   local t = {}
   for _,stack in ipairs(stacks) do
     t[#t+1] = {stackToString(stack), tr("zabrat'")}
@@ -359,8 +383,8 @@ function showDepositsScreen(parent)
 
   local btnAdd = d:addChild(gui.SimpleButton.new(nil, nil, "add", tr("dobavit'")), 0, ch-1):setColor(0x00c000)
   btnAdd.filterEvent = function(self, ev)
-    local mb = gui.MessageBox.new("Add items", nil, d)
-    local r = mb:exec()
+    showAddDepositsScreen(username, d)
+    d:redraw()
   end
 
   local btn = gui.SimpleButton.new(nil, nil, "close", tr("zakrit'"))
@@ -384,6 +408,9 @@ function mainLoop()
   computer.beep(523, 0.2);
   computer.beep(652, 0.2);
   computer.beep(784, 0.2);]]--
+
+  pcall(trade_robot.stopGathering)
+  pcall(trade_robot.dropAll)
 
   while true do
     local ev = s:pullEvent()
