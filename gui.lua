@@ -161,19 +161,24 @@ function Widget.new(xSize, ySize, event)
     if not inBox(event, self) then
       return
     end
+    local result = nil
     for i = 1,#self.children do
       local child = self.children[i]
       if inBox(event, child) then
         local ev = child:translateEvent(event)
         if ev ~= nil then
-          ev = self:filterEvent(ev)
-          if ev ~= nil then
-            return ev
-          end
+          result = ev
+          break
         end
       end
     end
-    return self.event
+    if result == nil then
+      result = self.event
+    end
+    if result ~= nil then
+      result = self:filterEvent(result)
+    end
+    return result
   end
   w.filterEvent = function(self, event)
     return event
@@ -511,7 +516,9 @@ function Table.new(xSize, ySize, values, widths)
     if yindex > #w.tab_values then
       return
     else
-      return {yindex, xindex}
+      ev = {yindex, xindex}
+      ev = self:filterEvent(ev)
+      return ev
     end
   end
   w.draw = function(self)
@@ -578,10 +585,7 @@ function Screen.new(bgColor)
       if ev ~= nil then
         ev = self:translateEvent(ev)
         if ev ~= nil then
-          ev = self:filterEvent(ev)
-          if ev ~= nil then
-            return ev
-          end
+          return ev
         end
       end
     end
@@ -617,10 +621,7 @@ function Dialog.new(xSize, ySize, parent)
         if ev ~= nil then
           ev = self:translateEvent(ev)
           if ev ~= nil then
-            ev = self:filterEvent(ev)
-            if ev ~= nil then
-              break
-            end
+            break
           end
         end
       end
