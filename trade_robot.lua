@@ -18,8 +18,10 @@ end
 
 function api.dropAll()
   for slot=1,16 do
-    robot.select(slot)
-    robot.dropUp()
+    if robot.count(slot) > 0 then
+      robot.select(slot)
+      robot.dropUp()
+    end
   end
 end
 
