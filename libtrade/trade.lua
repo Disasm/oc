@@ -424,8 +424,10 @@ function showTakeDepositsScreen(username, stack, parent)
 
   d:addChild(gui.Label.new(cw, u("Получение депозитов")), 0, 0)
 
+  d:addChild(gui.Label.new(cw, u(stack.label)), 0, 2):setTextColor(0x00c000)
+
   local count = gui.LargeSpinBox.new(5, stack.size, 1, stack.size)
-  d:addChild(count, math.floor((cw-count.xSize)/2), 3)
+  d:addChild(count, math.floor((cw-count.xSize)/2), 4)
 
   local btn = gui.SimpleButton.new(nil, nil, "take", u("забрать"))
   d:addChild(btn, 1, 10):setColor(0x00c000)
@@ -435,15 +437,22 @@ function showTakeDepositsScreen(username, stack, parent)
 
   local r = d:exec()
   if r == "take" then
-    local s = util.makeStack(stack, count.sb_value)
-    if storage.moveToOutput(s) then
-      trade_db:removeStack(username, s)
-      trade_robot.dropAll()
-    else
-      -- error
-      storage.moveAllToStorage()
-      local mb = gui.MessageBox.new(u("Произошла непредвиденная ошибка"), nil, parent)
-      mb:exec()
+    trade_robot.stopGathering()
+    local cnt = count.sb_value
+    while cnt > 0 do
+      local take = math.min(cnt, storage.getMaxStackSize(stack))
+      local s = util.makeStack(stack, take)
+      if storage.moveToOutput(s) then
+        trade_db:removeStack(username, s)
+        trade_robot.dropAll()
+        cnt = cnt - take
+      else
+        -- error
+        storage.moveAllToStorage()
+        local mb = gui.MessageBox.new(u("Произошла непредвиденная ошибка"), nil, parent)
+        mb:exec()
+        break
+      end
     end
     return true
   end
