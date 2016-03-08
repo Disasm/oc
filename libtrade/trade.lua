@@ -18,16 +18,9 @@ local event = require("event")
 local door_lock = require("door_lock")
 local util = require("stack_util")
 
-item_db:load()
-exchange:load()
-trade_db:load()
-tr.load("/tr_trade.txt")
-
 package.loaded["gui"] = nil
 _G["gui"] = nil
 gui = require("gui")
-
-gpu.setPaletteColor(8,0x111111)
 
 --[[function print1(...)
   term.setCursor(1,1)
@@ -568,22 +561,33 @@ if underConstruction then
   mainLoop = mainLoopStub
 end
 
-clearScreen()
-while true do
-  local result, reason = pcall(mainLoop)
+function main()
+  item_db:load()
+  exchange:load()
+  trade_db:load()
+  tr.load("/tr_trade.txt")
 
-  if result == false then
-    if emulator then
-      if reason == "exit" then
-        break
+  gpu.setPaletteColor(8,0x111111)
+
+  clearScreen()
+  while true do
+    local result, reason = pcall(mainLoop)
+
+    if result == false then
+      if emulator then
+        if reason == "exit" then
+          break
+        end
+        clearScreen()
+        term.setCursor(1,1)
+        print(reason)
+        return
       end
-      clearScreen()
-      term.setCursor(1,1)
-      print(reason)
-      return
+    else
+      -- Report error
     end
-  else
-    -- Report error
   end
+  clearScreen()
 end
-clearScreen()
+
+return main
