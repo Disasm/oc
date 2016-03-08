@@ -237,6 +237,74 @@ function inputLot(parent)
   return true
 end
 
+
+function showLot(lotId, parent)
+  local username = gui.getCurrentOwner()
+  if username == nil then
+    return false
+  end
+
+  local lot = exchange:getLot(lotId)
+  if lot == nil then
+    return false
+  end
+  lot.real_count = exchange:getRealExchangeCount(lot.id)
+
+  local isOwner = (username == lot.username)
+  if not isOwner then
+    lot.real_count = exchange:getMaxExchangeCount(lot.id, username)
+  end
+
+  local w, h = gpu.getResolution()
+  --local d = gui.Dialog.new(math.floor(w*0.8), math.floor(h*0.8), parent)
+  local d = gui.Dialog.new(36, 11, parent)
+
+  local cw, ch = d:contentSize()
+  d:addChild(gui.Label.new(cw, u("Лот")), 0, 0)
+
+  d:addChild(gui.Label.new(20, u("Продаётся:"), true), 1, 1)
+  d:addChild(gui.Label.new(20, u(stackToString(lot.from)), true), 2, 2):setTextColor(0x00c000)
+  d:addChild(gui.Label.new(20, u("В обмен на:"), true), 1, 4)
+  d:addChild(gui.Label.new(20, u(stackToString(lot.to)), true), 2, 5):setTextColor(0x00c000)
+
+  d:addChild(gui.Label.new(17, u("Количество лотов:"), true), 1, 7)
+  local text = tostring(lot.real_count)
+  if isOwner then
+    text = text.." ("..tostring(lot.count)..u(" максимум)")
+  end
+  d:addChild(gui.Label.new(20, text, true), 2, 8):setTextColor(0x00c000)
+
+  local count
+  if isOwner then
+    d:addChild(gui.SimpleButton.new(nil, nil, "delete", u("удалить")), 1, 10):setColor(0x00c000)
+  else
+    if lot.real_count == 0 then
+      d:addChild(gui.Label.new(17, u("Недостаточно предметов для покупки"), true), 1, 10):setColor(0xc00000)
+    else
+      count = d:addChild(gui.SpinBox.new(5, 1, 1, lot.real_count, 1), 1, 10)
+      d:addChild(gui.SimpleButton.new(nil, nil, "exchange", u("купить")), 9, 10):setColor(0x00c000)
+    end
+  end
+
+  local btn = gui.SimpleButton.new(nil, nil, "close", u("закрыть"))
+  d:addChild(btn, cw-btn.xSize-1, 10):setColor(0x00c000)
+
+  local r = d:exec()
+  if r == "exchange" then
+    local result, reason = pcall(exchange.exchange, exchange, lot.id, username, count.sb_value)
+    if result == false then
+      local mb = gui.MessageBox.new(u("Произошла непредвиденная ошибка"), nil, parent)
+      local r = mb:exec()
+    end
+    return true
+  end
+  if r == "delete" then
+    exchange:deleteLot(lot.id)
+    return true
+  end
+end
+
+
 function stackToString(s)
   return tonumber(s.size).." x "..s.label
 end
@@ -252,7 +320,16 @@ function drawMainScreen(s)
   local sizeCount = 7
   local sizeUsername = 15
   local sizeStack = math.floor((s.xSize - sizeCount - sizeUsername - 2) / 2)
-  s:addChild(gui.Table.new(s.xSize, s.ySize-4, t, {sizeStack, sizeStack, sizeCount, sizeUsername}), 0, 3):setRowColors(0x000000, 0x111111)--:setColor(0xc0c000)
+  local tbl = s:addChild(gui.Table.new(s.xSize, s.ySize-4, t, {sizeStack, sizeStack, sizeCount, sizeUsername}), 0, 3):setRowColors(0x000000, 0x111111)--:setColor(0xc0c000)
+  tbl.filterEvent = function(self, ev)
+    if type(ev) == "table" then
+      local row = ev[1]
+      if showLot(lots[row].id, s) then
+        return 'redraw'
+      end
+    end
+    return
+  end
 
   s:addChild(gui.Label.new(s.xSize-2, u("Все предложения")), 1, 0)
   s:addChild(gui.Label.new(sizeStack, u("Продажа"), true), 0, 2):setColor(0x333333):setTextColor(0xFFBB24)
@@ -315,6 +392,10 @@ function showUserLots(s)
   local sizeStack = math.floor((cw - sizeCount) / 2)
   local tbl = d:addChild(gui.Table.new(cw, ch-5, t, {sizeStack, sizeStack, sizeCount, sizeDelete}), 0, 3):setRowColors(0x000000, 0x111111)--:setColor(0xc0c000)
   tbl.filterEvent = function(self, ev)
+    if type(ev) == "table" then
+      local row = ev[1]
+      showLot(lots[row].id, d)
+    end
     return
   end
 
@@ -458,11 +539,6 @@ function mainLoop()
       end
       return
     end
-    if ev == "btn" then
-      local d = gui.MessageBox.new("This is MessageBox", nil, s)
-      local r = d:exec()
-      --local d = gui.Dialog.new(43, 10, s)
-    end
     if ev == "exit" then
       gpu.setBackground(0x000000)
       gpu.setForeground(0xffffff)
@@ -470,9 +546,8 @@ function mainLoop()
       quit = true
       break
     end
-    if type(ev) == "table" then
-      term.setCursor(1,1)
-      print(table.unpack(ev))
+    if ev == 'redraw' then
+      return
     end
   end
 end
