@@ -420,6 +420,7 @@ function showAddDepositsScreen(username, parent)
   for slot=1,storage.getOutputInventorySize() do
     local s = storage.getStackInOutputSlot(slot)
     if s ~= nil then
+      item_db:add(s)
       local freeSpace = trade_db:getFreeSpaceForStack(username, s)
       if freeSpace < s.size then
         ok = false
