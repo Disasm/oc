@@ -1,7 +1,6 @@
 local guiTimeout = 6000
 local underConstruction = false
 
-package.path = package.path .. ';/libs/?.lua'
 local component = require("component")
 local file_serialization = require("file_serialization")
 local gpu = component.gpu
