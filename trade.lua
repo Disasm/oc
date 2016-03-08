@@ -22,13 +22,16 @@ local emulator = require("emulator")
 local event = require("event")
 local door_lock = require("door_lock")
 
-exchange:load();
-trade_db:load();
+item_db:load()
+exchange:load()
+trade_db:load()
 tr.load("/tr_trade.txt")
 
 package.loaded["gui"] = nil
 _G["gui"] = nil
 gui = require("gui")
+
+gpu.setPaletteColor(8,0x111111)
 
 --[[function print1(...)
   term.setCursor(1,1)
@@ -44,17 +47,6 @@ end)
 event.listen("user_logout", function()
   door_lock.unlock()
 end)
-
-
-item_db:load();
-
-gpu.setPaletteColor(8,0x111111)
-
---addItemToDb({size=1,name="minecraft:clock",label="Clock"})
---addItemToDb({size=1,name="minecraft:gold_ingot",label="Gold Ingot"})
---addItemToDb({size=1,name="minecraft:redstone",label="Redstone"})
-
-gui.setIdealResolution()
 
 local inputSide = sides.down
 local outputSide = sides.left
@@ -114,9 +106,6 @@ function inputFromDb(parent)
   end
 
   local stack = db[ev[1]]
-
-  --[[local d = gui.MessageBox.new("Item detected: "..stack.label, nil, parent)
-  local r = d:exec()]]--
 
   return stack
 end
@@ -495,13 +484,11 @@ function showDepositsScreen(parent)
   return d:exec()
 end
 
-local quit = false
-
 function mainLoop()
+  gui.setIdealResolution()
   gui.setTimeout(guiTimeout)
 
   local s = gui.Screen.new(0)
-  --s:addChild(gui.SimpleButton.new(10, 1, "exit", "exit"), 10, 0):setColor(0xc00000)
 
   drawMainScreen(s)
 
@@ -540,13 +527,6 @@ function mainLoop()
       end
       return
     end
-    if ev == "exit" then
-      gpu.setBackground(0x000000)
-      gpu.setForeground(0xffffff)
-      term.setCursor(1,1)
-      quit = true
-      break
-    end
     if ev == 'redraw' then
       return
     end
@@ -569,7 +549,7 @@ if underConstruction then
 end
 
 clearScreen()
-while not quit do
+while true do
   local result, reason = pcall(mainLoop)
 
   if result == false then
