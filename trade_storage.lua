@@ -57,11 +57,14 @@ end
 
 function storage.moveToOutput(stack)
   local s = transposer.getStackInSlot(outputSide, outputSlot)
-  if (s ~= nil) and (not util.equalThings(s, stack)) then
-    return false
-  end
-  if (transposer.getSlotMaxStackSize(outputSide, outputSlot) - s.size) < stack.size then
-    return false
+  local currentStackSize = 0
+  if s ~= nil then
+    if not util.equalThings(s, stack) then
+      return false
+    end
+    if (transposer.getSlotMaxStackSize(outputSide, outputSlot) - s.size) < stack.size then
+      return false
+    end
   end
 
   local cnt = stack.size
