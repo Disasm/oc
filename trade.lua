@@ -10,6 +10,7 @@ local util = require("stack_util")
 local item_db = require("stack_db")
 local trade_db = require("trade_db")
 local tr = require("tr")
+local u = require("u")
 local unicode = require("unicode")
 local exchange = require("trade_exchange")
 local storage = require("trade_storage")
@@ -60,7 +61,7 @@ function inputSample(parent)
   clearInputChest()
 
   local i = 0
-  local d = gui.MessageBox.new(tr("Bros'te predmeti na robota"), {tr("Otmena"), "cancel"}, parent)
+  local d = gui.MessageBox.new(u("Бросьте предметы на робота"), {u("Отмена"), "cancel"}, parent)
   d.update = function(self)
     i = i + 1
     local s = transposer.getStackInSlot(inputSide, 1)
@@ -78,7 +79,7 @@ function inputSample(parent)
   end
 
   if stack == nil then
-    local d = gui.MessageBox.new(tr("Net predmetov"), nil, parent)
+    local d = gui.MessageBox.new(u("Нет предметов"), nil, parent)
     d:setColor(0xcc0000)
     local r = d:exec()
     return
@@ -97,7 +98,7 @@ function inputFromDb(parent)
   end
 
   d:addChild(gui.Table.new(d.xSize-4, d.ySize-4, t, {d.xSize-6}), 0, 0)--:setColor(0xc0c000)
-  d:addChild(gui.SimpleButton.new(8, 1, "cancel", tr("otmena")), d.xSize-8-4, 11):setColor(0x00c000)
+  d:addChild(gui.SimpleButton.new(8, 1, "cancel", u("отмена")), d.xSize-8-4, 11):setColor(0x00c000)
   local ev = d:exec()
   if ev == "cancel" then
     return
@@ -116,32 +117,32 @@ function inputLot(parent)
   local selectedTextColor = 0x00c000
   local stack1 = nil
   local stack2 = nil
-  local item1Name = tr("ne vibran")
-  local item2Name = tr("ne vibran")
+  local item1Name = u("не выбран")
+  local item2Name = u("не выбран")
   local d = gui.Dialog.new(48, 12, parent)
   local label1 = gui.Label.new(20, item1Name, true)
   local label2 = gui.Label.new(20, item2Name, true)
   local size1 = gui.SpinBox.new(5, 1, 1, 64, 1)
   local size2 = gui.SpinBox.new(5, 1, 1, 64, 1)
   local count = gui.SpinBox.new(5, 1, 1, 64, 1)
-  d:addChild(gui.Label.new(46, tr("Sozdanie lota")), 0, 0)
-  d:addChild(gui.Label.new(35, tr("Vi daete drugomu igroku:"), true), 1, 1)
-  d:addChild(gui.Label.new(8, tr("Predmet:")), 2, 2)
+  d:addChild(gui.Label.new(46, u("Создание лота")), 0, 0)
+  d:addChild(gui.Label.new(35, u("Вы даёте другому игроку:"), true), 1, 1)
+  d:addChild(gui.Label.new(8, u("Предмет:")), 2, 2)
   d:addChild(label1, 11, 2)
-  d:addChild(gui.Label.new(11, tr("Koli4estvo:")), 2, 3)
+  d:addChild(gui.Label.new(11, u("Количество:")), 2, 3)
   d:addChild(size1, 14, 3)--:setColor(0x00c0c0)
-  d:addChild(gui.SimpleButton.new(7, 1, "select1", tr("vibor")), 30, 2):setColor(0x00c000)
-  d:addChild(gui.SimpleButton.new(9, 1, "sample1", tr("obrazec")), 38, 2):setColor(0x00c000)
+  d:addChild(gui.SimpleButton.new(7, 1, "select1", u("выбор")), 30, 2):setColor(0x00c000)
+  d:addChild(gui.SimpleButton.new(9, 1, "sample1", u("образец")), 38, 2):setColor(0x00c000)
 
-  d:addChild(gui.Label.new(35, tr("Vi polu4aete ot drugogo igroka:"), true), 1, 5)
-  d:addChild(gui.Label.new(8, tr("Predmet:")), 2, 6)
+  d:addChild(gui.Label.new(35, u("Вы получаете от другого игрока:"), true), 1, 5)
+  d:addChild(gui.Label.new(8, u("Предмет:")), 2, 6)
   d:addChild(label2, 11, 6):setTextColor(0x00c000)
-  d:addChild(gui.Label.new(11, tr("Koli4estvo:")), 2, 7)
+  d:addChild(gui.Label.new(11, u("Количество:")), 2, 7)
   d:addChild(size2, 14, 7)--:setColor(0x00c0c0)
-  d:addChild(gui.SimpleButton.new(7, 1, "select2", tr("vibor")), 30, 6):setColor(0x00c000)
-  d:addChild(gui.SimpleButton.new(9, 1, "sample2", tr("obrazec")), 38, 6):setColor(0x00c000)
+  d:addChild(gui.SimpleButton.new(7, 1, "select2", u("выбор")), 30, 6):setColor(0x00c000)
+  d:addChild(gui.SimpleButton.new(9, 1, "sample2", u("образец")), 38, 6):setColor(0x00c000)
 
-  d:addChild(gui.Label.new(17, tr("Koli4estvo lotov:"), true), 1, 9)
+  d:addChild(gui.Label.new(17, u("Количество лотов:"), true), 1, 9)
   d:addChild(count, 19, 9)
 
   d:addChild(gui.SimpleButton.new(9, 1, "create", tr("sozdat'")), 1, 11):setColor(0x00c000)
