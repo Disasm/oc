@@ -39,7 +39,7 @@ function db:getAllUserStacks(username)
     return {}
   end
   local r = {}
-  for _,stack in ipairs(items) do
+  for _,stack in pairs(items) do
     r[#r+1] = util.makeStack(stack)
   end
   return r
