@@ -94,23 +94,35 @@ function ex:exchange(lotId, username2, count)
   if username2 == lot.username then
     return
   end
-  if count <= 0 then
-    error(tr("exchange()s: Invalid parameters"))
+  if count <= 0 or count > lot.count then
+    error(tr("exchange(): Invalid parameters"))
   end
   local fromStack = makeStack(lot.from, lot.from.size * count)
   local toStack = makeStack(lot.to, lot.to.size * count)
-  if item_db:getStackSize(username2, fromStack) < fromStack.size then
+  if item_db:getStackSize(username2, toStack) < toStack.size then
     error(tr("Buyer has insufficient items"))
   end
-  if item_db:getStackSize(lot.username, toStack) < toStack.size then
+  if item_db:getStackSize(lot.username, fromStack) < fromStack.size then
     error(tr("Seller has insufficient items"))
   end
-  if item_db:getFreeSpaceForStack(username2, toStack) < toStack.size then
+  if item_db:getFreeSpaceForStack(username2, fromStack) < fromStack.size then
     error(tr("Buyer has insufficient space"))
   end
-  if item_db:getFreeSpaceForStack(lot.username, fromStack) < fromStack.size then
+  if item_db:getFreeSpaceForStack(lot.username, toStack) < toStack.size then
     error(tr("Seller has insufficient space"))
   end
+
+  item_db:removeStack(lot.username, fromStack)
+  item_db:removeStack(username2, toStack)
+
+  item_db:addStack(lot.username, toStack)
+  item_db:addStack(username2, fromStack)
+
+  lot.count = lot.count - count
+  if lot.count <= 0 then
+    self.lots[lotId] = nil
+  end
+  self:save()
 end
 
 
