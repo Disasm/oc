@@ -243,7 +243,7 @@ end
 
 function drawMainScreen(s)
   -- lot table
-  local lots = exchange:getAllLots()
+  local lots = exchange:getAllLots(true)
   local t = {}
   for i=1,#lots do
     local lot = lots[i]
