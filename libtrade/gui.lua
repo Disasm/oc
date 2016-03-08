@@ -732,6 +732,7 @@ gui = {
   end,
 
   clearCurrentOwner = function()
+    computer.pushSignal("user_logout")
     currentOwner = nil
   end,
 
