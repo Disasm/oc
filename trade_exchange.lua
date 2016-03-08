@@ -42,6 +42,23 @@ function ex:addLot(username, fromStack, toStack, count)
   self:save()
 end
 
+function ex:deleteLot(lotId)
+  self.lots[lotId] = nil
+end
+
+function ex:getLot(lotId)
+  local lot = self.lots[lotId]
+  if lot == nil then
+    return nil
+  end
+
+  local lot_copy = {}
+  for k,v in pairs(lot) do
+    lot_copy[k] = v
+  end
+  return lot_copy
+end
+
 function ex:getAllLots(real_counts)
   real_counts = not not real_counts
   r = {}
