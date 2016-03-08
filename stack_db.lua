@@ -12,7 +12,7 @@ function db:load()
   for k,v in pairs(self.items) do
     self.itemMap[util.stackHash(v)] = true
   end
-  table.sort(self.items, function(a,b) return a.label > b.label end)
+  table.sort(self.items, function(a,b) return a.label < b.label end)
 end
 
 function db:save()
