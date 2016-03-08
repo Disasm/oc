@@ -18,10 +18,12 @@ local currentTimeout = 1e6
 local currentDeadline = computer.uptime() + currentTimeout
 
 function startUserSession()
+  computer.pushSignal("user_login")
   currentDeadline = computer.uptime() + currentTimeout
 end
 
 function terminateUserSession()
+  computer.pushSignal("user_logout")
   currentDeadline = computer.uptime() + 1e6
   currentOwner = nil
   error('exit')
