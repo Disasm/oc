@@ -2,13 +2,9 @@ local guiTimeout = 60
 local underConstruction = false
 
 local component = require("component")
-local file_serialization = require("file_serialization")
 local gpu = component.gpu
 local computer = component.computer
-local transposer = component.transposer
-term = require("term")
-local sides = require("sides")
-local util = require("stack_util")
+local term = require("term")
 local item_db = require("stack_db")
 local trade_db = require("trade_db")
 local tr = require("tr")
@@ -47,9 +43,6 @@ event.listen("user_logout", function()
   door_lock.unlock()
 end)
 
-local inputSide = sides.down
-local outputSide = sides.left
-local storageSide = sides.back
 
 function clearScreen()
   gpu.setBackground(0x000000)
