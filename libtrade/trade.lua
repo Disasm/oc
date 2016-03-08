@@ -1,4 +1,4 @@
-local guiTimeout = 6000
+local guiTimeout = 60
 local underConstruction = false
 
 local component = require("component")
