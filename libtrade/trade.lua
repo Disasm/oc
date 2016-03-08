@@ -1,5 +1,6 @@
 local guiTimeout = 60
 local underConstruction = false
+local maxLotsPerUser = 5
 
 local component = require("component")
 local gpu = component.gpu
@@ -97,6 +98,17 @@ function inputFromDb(parent)
 end
 
 function inputLot(parent)
+  local username = gui.getCurrentOwner()
+  if username == nil then
+    return false
+  end
+  if exchange:countUserLots(username) >= maxLotsPerUser then
+    local mb = gui.MessageBox.new(u("Исчерпано допустимое количество лотов"), nil, parent)
+    mb:setColor(0xcc0000)
+    mb:exec()
+    return false
+  end
+
   local defaultTextColor = 0xffffff
   local selectedTextColor = 0x00c000
   local stack1 = nil
@@ -203,12 +215,9 @@ function inputLot(parent)
     end
   end
 
-  local username = gui.getCurrentOwner()
-  if username ~= nil then
-    stack1.size = size1.sb_value
-    stack2.size = size2.sb_value
-    exchange:addLot(username, stack1, stack2, count.sb_value)
-  end
+  stack1.size = size1.sb_value
+  stack2.size = size2.sb_value
+  exchange:addLot(username, stack1, stack2, count.sb_value)
   return true
 end
 

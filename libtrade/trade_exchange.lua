@@ -59,6 +59,18 @@ function ex:getLot(lotId)
   return lot_copy
 end
 
+function ex:countUserLots(username)
+  local cnt = 0
+  for id,lot in pairs(self.lots) do
+    if type(id) == "number" then
+      if lot.username == username then
+        cnt = cnt + 1
+      end
+    end
+  end
+  return cnt
+end
+
 function ex:getAllLots(real_counts)
   real_counts = not not real_counts
   r = {}
