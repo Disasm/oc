@@ -1,8 +1,7 @@
 local file_serialization = require("file_serialization")
-local item_db = require("trade_db")
+local trade_db = require("trade_db")
+local util = require("stack_util")
 local tr = require("tr")
-
-local makeStack = item_db.makeStack
 
 function gcd(a, b)
   if b ~= 0 then
@@ -10,6 +9,16 @@ function gcd(a, b)
   else
     return math.abs(a)
   end
+end
+
+function copyLot(lot)
+  local lot_copy = {}
+  for k,v in pairs(lot) do
+    lot_copy[k] = v
+  end
+  lot_copy.from = util.makeStack(lot.from)
+  lot_copy.to = util.makeStack(lot.to)
+  return lot_copy
 end
 
 local ex = {}
@@ -33,8 +42,8 @@ function ex:addLot(username, fromStack, toStack, count)
 
   local n = gcd(fromStack.size, toStack.size)
 
-  lot.from = makeStack(fromStack, math.floor(fromStack.size / n))
-  lot.to = makeStack(toStack, math.floor(toStack.size / n))
+  lot.from = util.makeStack(fromStack, math.floor(fromStack.size / n))
+  lot.to = util.makeStack(toStack, math.floor(toStack.size / n))
   lot.count = count * n
   lot.username = username
   self.lots[lot.id] = lot
@@ -79,19 +88,12 @@ function ex:getAllLots(real_counts)
       if real_counts then
         local real_count = self:getRealExchangeCount(id)
         if real_count > 0 then
-          local lot_copy = {}
-          for k,v in pairs(lot) do
-            lot_copy[k] = v
-          end
+          local lot_copy = copyLot(lot)
           lot_copy.count = real_count
           r[#r+1] = lot_copy
         end
       else
-        local lot_copy = {}
-        for k,v in pairs(lot) do
-          lot_copy[k] = v
-        end
-        r[#r+1] = lot_copy
+        r[#r+1] = copyLot(lot)
       end
     end
   end
@@ -109,26 +111,26 @@ function ex:exchange(lotId, username2, count)
   if count <= 0 or count > lot.count then
     error(tr("exchange(): Invalid parameters"))
   end
-  local fromStack = makeStack(lot.from, lot.from.size * count)
-  local toStack = makeStack(lot.to, lot.to.size * count)
-  if item_db:getStackSize(username2, toStack) < toStack.size then
+  local fromStack = util.makeStack(lot.from, lot.from.size * count)
+  local toStack = util.makeStack(lot.to, lot.to.size * count)
+  if trade_db:getStackSize(username2, toStack) < toStack.size then
     error(tr("Buyer has insufficient items"))
   end
-  if item_db:getStackSize(lot.username, fromStack) < fromStack.size then
+  if trade_db:getStackSize(lot.username, fromStack) < fromStack.size then
     error(tr("Seller has insufficient items"))
   end
-  if item_db:getFreeSpaceForStack(username2, fromStack) < fromStack.size then
+  if trade_db:getFreeSpaceForStack(username2, fromStack) < fromStack.size then
     error(tr("Buyer has insufficient space"))
   end
-  if item_db:getFreeSpaceForStack(lot.username, toStack) < toStack.size then
+  if trade_db:getFreeSpaceForStack(lot.username, toStack) < toStack.size then
     error(tr("Seller has insufficient space"))
   end
 
-  item_db:removeStack(lot.username, fromStack)
-  item_db:removeStack(username2, toStack)
+  trade_db:removeStack(lot.username, fromStack)
+  trade_db:removeStack(username2, toStack)
 
-  item_db:addStack(lot.username, toStack)
-  item_db:addStack(username2, fromStack)
+  trade_db:addStack(lot.username, toStack)
+  trade_db:addStack(username2, fromStack)
 
   lot.count = lot.count - count
   if lot.count <= 0 then
@@ -145,11 +147,11 @@ function ex:getRealExchangeCount(lotId)
     return 0
   end
 
-  local fromStack = makeStack(lot.from)
-  local toStack = makeStack(lot.to)
+  local fromStack = util.makeStack(lot.from)
+  local toStack = util.makeStack(lot.to)
 
-  local cnt1 = item_db:getStackSize(lot.username, fromStack)
-  local free1 = item_db:getFreeSpaceForStack(lot.username, toStack)
+  local cnt1 = trade_db:getStackSize(lot.username, fromStack)
+  local free1 = trade_db:getFreeSpaceForStack(lot.username, toStack)
 
   local n1 = math.floor(cnt1 / fromStack.size)
   local n2 = math.floor(free1 / toStack.size)
@@ -167,13 +169,13 @@ function ex:getMaxExchangeCount(lotId, username2)
     return 0
   end
 
-  local fromStack = makeStack(lot.from)
-  local toStack = makeStack(lot.to)
+  local fromStack = util.makeStack(lot.from)
+  local toStack = util.makeStack(lot.to)
 
-  local cnt1 = item_db:getStackSize(username2, toStack)
-  local cnt2 = item_db:getStackSize(lot.username, fromStack)
-  local free1 = item_db:getFreeSpaceForStack(username2, fromStack)
-  local free2 = item_db:getFreeSpaceForStack(lot.username, toStack)
+  local cnt1 = trade_db:getStackSize(username2, toStack)
+  local cnt2 = trade_db:getStackSize(lot.username, fromStack)
+  local free1 = trade_db:getFreeSpaceForStack(username2, fromStack)
+  local free2 = trade_db:getFreeSpaceForStack(lot.username, toStack)
 
   local n1 = math.floor(cnt1 / toStack.size)
   local n2 = math.floor(cnt2 / fromStack.size)
