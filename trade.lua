@@ -145,8 +145,8 @@ function inputLot(parent)
   d:addChild(gui.Label.new(17, u("Количество лотов:"), true), 1, 9)
   d:addChild(count, 19, 9)
 
-  d:addChild(gui.SimpleButton.new(9, 1, "create", tr("sozdat'")), 1, 11):setColor(0x00c000)
-  d:addChild(gui.SimpleButton.new(10, 1, "cancel", tr("otmena")), d.xSize-10-4, 11):setColor(0x00c000)
+  d:addChild(gui.SimpleButton.new(9, 1, "create", u("создать")), 1, 11):setColor(0x00c000)
+  d:addChild(gui.SimpleButton.new(10, 1, "cancel", u("отмена")), d.xSize-10-4, 11):setColor(0x00c000)
 
   d.filterEvent = function(self, ev)
     if (ev == "sample1") or (ev == "sample2") then
@@ -175,7 +175,7 @@ function inputLot(parent)
 
     if ev == "create" then
       if (stack1 == nil) or (stack2 == nil) then
-        local d = gui.MessageBox.new(tr("Sna4ala viberite predmeti!"), nil, d)
+        local d = gui.MessageBox.new(u("Сначала выберите предметы!"), nil, d)
         d:setColor(0xcc0000)
         local r = d:exec()
         return ""
@@ -191,14 +191,14 @@ function inputLot(parent)
     local color2
 
     if stack1 == nil then
-      item1Name = tr("ne vibran")
+      item1Name = u("не выбран")
       color1 = defaultTextColor
     else
       item1Name = stack1.label
       color1 = selectedTextColor
     end
     if stack2 == nil then
-      item2Name = tr("ne vibran")
+      item2Name = u("не выбран")
       color2 = defaultTextColor
     else
       item2Name = stack2.label
@@ -245,23 +245,23 @@ function drawMainScreen(s)
   local sizeStack = math.floor((s.xSize - sizeCount - sizeUsername - 2) / 2)
   s:addChild(gui.Table.new(s.xSize, s.ySize-4, t, {sizeStack, sizeStack, sizeCount, sizeUsername}), 0, 3):setRowColors(0x000000, 0x111111)--:setColor(0xc0c000)
 
-  s:addChild(gui.Label.new(s.xSize-2, tr("Vse predlozeniya")), 1, 0)
-  s:addChild(gui.Label.new(sizeStack, tr("Prodaza"), true), 0, 2):setColor(0x333333):setTextColor(0xFFBB24)
-  s:addChild(gui.Label.new(sizeStack, tr("Pokupka"), true), sizeStack, 2):setColor(0x333333):setTextColor(0xFFBB24)
-  s:addChild(gui.Label.new(sizeCount, tr("Kol-vo"), true), sizeStack*2, 2):setColor(0x333333):setTextColor(0xFFBB24)
-  s:addChild(gui.Label.new(s.xSize-(sizeStack*2+sizeCount), tr("Polzovatel"), true), sizeStack*2+sizeCount, 2):setColor(0x333333):setTextColor(0xFFBB24)
+  s:addChild(gui.Label.new(s.xSize-2, u("Все предложения")), 1, 0)
+  s:addChild(gui.Label.new(sizeStack, u("Продажа"), true), 0, 2):setColor(0x333333):setTextColor(0xFFBB24)
+  s:addChild(gui.Label.new(sizeStack, u("Покупка"), true), sizeStack, 2):setColor(0x333333):setTextColor(0xFFBB24)
+  s:addChild(gui.Label.new(sizeCount, u("Кол-во"), true), sizeStack*2, 2):setColor(0x333333):setTextColor(0xFFBB24)
+  s:addChild(gui.Label.new(s.xSize-(sizeStack*2+sizeCount), u("Пользователь"), true), sizeStack*2+sizeCount, 2):setColor(0x333333):setTextColor(0xFFBB24)
 
   buttons = {}
   if gui.getCurrentOwner() == nil then
     buttons = {
-      {tr("nachat' rabotu"), "start"},
+      {u("начать работу"), "start"},
     }
   else
     buttons = {
-      {tr("dobavit' lot"), "add_lot"},
-      {tr("moi loti"), "my_lots"},
-      {tr("inventar'"), "inventory"},
-      {tr("zavershit' rabotu"), "logout"},
+      {u("добавить лот"), "add_lot"},
+      {u("мои лоты"), "my_lots"},
+      {u("инвентарь"), "inventory"},
+      {u("завершить работу"), "logout"},
     }
   end
 
@@ -306,12 +306,12 @@ function showUserLots(s)
     return
   end
 
-  d:addChild(gui.Label.new(sizeStack, tr("Prodaza"), true), 0, 2):setColor(0x333333):setTextColor(0xFFBB24)
-  d:addChild(gui.Label.new(sizeStack, tr("Pokupka"), true), sizeStack, 2):setColor(0x333333):setTextColor(0xFFBB24)
-  d:addChild(gui.Label.new(sizeCount, tr("Kol-vo"), true), sizeStack*2, 2):setColor(0x333333):setTextColor(0xFFBB24)
-  d:addChild(gui.Label.new(tbl.xSize-(sizeStack*2+sizeCount), tr(" "), true), sizeStack*2+sizeCount, 2):setColor(0x333333):setTextColor(0xFFBB24)
+  d:addChild(gui.Label.new(sizeStack, u("Продажа"), true), 0, 2):setColor(0x333333):setTextColor(0xFFBB24)
+  d:addChild(gui.Label.new(sizeStack, u("Покупка"), true), sizeStack, 2):setColor(0x333333):setTextColor(0xFFBB24)
+  d:addChild(gui.Label.new(sizeCount, u("Кол-во"), true), sizeStack*2, 2):setColor(0x333333):setTextColor(0xFFBB24)
+  d:addChild(gui.Label.new(tbl.xSize-(sizeStack*2+sizeCount), "X", true), sizeStack*2+sizeCount, 2):setColor(0x333333):setTextColor(0xFFBB24)
 
-  local btn = gui.SimpleButton.new(nil, nil, "close", tr("zakrit'"))
+  local btn = gui.SimpleButton.new(nil, nil, "close", u("закрыть"))
   d:addChild(btn, math.floor((d.xSize-2-btn.xSize)/2), d.ySize-4):setColor(0x00c000)
 
   local r = d:exec()
@@ -325,7 +325,7 @@ local initialStacks = {
 
 function showAddDepositsScreen(username, parent)
   trade_robot.startGathering()
-  local d = gui.MessageBox.new(tr("Bros'te predmeti na robota"), {tr("Prodolzhit'"), "continue"}, parent)
+  local d = gui.MessageBox.new(u("Вросьте предметы на робота"), {u("Продолжить"), "continue"}, parent)
   d:exec()
   trade_robot.stopGathering()
 
@@ -344,7 +344,7 @@ function showAddDepositsScreen(username, parent)
     end
   end
   if not ok then
-    local mb = gui.MessageBox.new(tr("Nedostatochno mesta"), nil, d)
+    local mb = gui.MessageBox.new(u("Недостаточно места"), nil, d)
     local r = mb:exec()
   end
   trade_robot.dropAll()
@@ -361,13 +361,13 @@ function showDepositsScreen(parent)
 
   local cw, ch = d:contentSize()
 
-  d:addChild(gui.Label.new(cw, tr("Balans i depositi")), 0, 0)
+  d:addChild(gui.Label.new(cw, u("Баланс и депозиты")), 0, 0)
 
   local stacks = trade_db:getAllUserStacks(username)
   --stacks = initialStacks
   local t = {}
   for _,stack in ipairs(stacks) do
-    t[#t+1] = {stackToString(stack), tr("zabrat'")}
+    t[#t+1] = {stackToString(stack), u("забрать")}
   end
   local sizeLabel = 8
   local sizeStack = cw - 2 - sizeLabel
@@ -382,13 +382,13 @@ function showDepositsScreen(parent)
     end
   end
 
-  local btnAdd = d:addChild(gui.SimpleButton.new(nil, nil, "add", tr("dobavit'")), 0, ch-1):setColor(0x00c000)
+  local btnAdd = d:addChild(gui.SimpleButton.new(nil, nil, "add", u("добавить")), 0, ch-1):setColor(0x00c000)
   btnAdd.filterEvent = function(self, ev)
     showAddDepositsScreen(username, d)
     d:redraw()
   end
 
-  local btn = gui.SimpleButton.new(nil, nil, "close", tr("zakrit'"))
+  local btn = gui.SimpleButton.new(nil, nil, "close", u("закрыть"))
   d:addChild(btn, cw-btn.xSize, ch-1):setColor(0x00c000)
 
   return d:exec()
@@ -404,7 +404,7 @@ function mainLoop()
 
   s:redraw()
 
-  --[[local d = gui.MessageBox.new(tr("Opening soon"), nil, s)
+  --[[local d = gui.MessageBox.new(u("Скоро открытие"), nil, s)
   local r = d:exec()
   computer.beep(523, 0.2);
   computer.beep(652, 0.2);
@@ -425,7 +425,7 @@ function mainLoop()
     end
     if ev == "add_lot" then
       if inputLot(s) ==true then
-        local mb = gui.MessageBox.new(tr("Teper' vam nuzhno dobavit' predmeti v razdele \"inventar'\""), nil, s)
+        local mb = gui.MessageBox.new(u("Теперь вам нужно добавить предметы в разделе \"инвентарь\""), nil, s)
         mb:exec()
       end
       return
