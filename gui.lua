@@ -2,6 +2,7 @@ local unicode = require("unicode")
 local component = require("component")
 local event = require("event")
 local gpu = component.gpu
+local computer = require("computer")
 
 local aux = {
   --              tl      tr      br      bl      hor     vert
@@ -13,22 +14,49 @@ local aux = {
 
 local restrictEvents = true
 local currentOwner = nil
+local currentTimeout = 1e6
+local currentDeadline = computer.uptime() + currentTimeout
+
+function startUserSession()
+  currentDeadline = computer.uptime() + currentTimeout
+end
+
+function terminateUserSession()
+  currentDeadline = computer.uptime() + 1e6
+  currentOwner = nil
+  error('exit')
+end
+
+function updateUserSession()
+  if currentOwner == nil then
+    currentDeadline = computer.uptime() + 1e6
+  else
+    currentDeadline = computer.uptime() + currentTimeout
+  end
+end
+
+function checkAutoLogout()
+  if computer.uptime() > currentDeadline then
+    terminateUserSession()
+  end
+end
 
 function filterEvent(event)
   if event[1] ~= "touch" then
     return
   end
+  updateUserSession()
   if not restrictEvents then
     return event
   end
   local w,h = gpu.getResolution()
   if event[3] == w and event[4] == 1 then
-    currentOwner = nil
-    error("exit")
+    terminateUserSession()
     return
   end
   if currentOwner == nil then
     currentOwner = event[6]
+    startUserSession()
     return event
   else
     if currentOwner ~= event[6] then
@@ -580,12 +608,15 @@ function Screen.new(bgColor)
   w:addChild(SimpleButton.new(1, 1, "exit", "X"), w.xSize-1, 0)
   w.pullEvent = function(self)
     while true do
-      local ev = table.pack(event.pull("touch"))
-      ev = filterEvent(ev)
+      local ev = table.pack(event.pull(0.2, "touch"))
+      checkAutoLogout()
       if ev ~= nil then
-        ev = self:translateEvent(ev)
+        ev = filterEvent(ev)
         if ev ~= nil then
-          return ev
+          ev = self:translateEvent(ev)
+          if ev ~= nil then
+            return ev
+          end
         end
       end
     end
@@ -616,6 +647,7 @@ function Dialog.new(xSize, ySize, parent)
     local ev
     while true do
       ev = table.pack(event.pull(0.2, "touch"))
+      checkAutoLogout()
       if ev ~= nil then
         ev = filterEvent(ev)
         if ev ~= nil then
@@ -704,6 +736,11 @@ gui = {
   setIdealResolution = function()
     -- TODO: use getAspectRatio or getSize
     gpu.setResolution(71, 25)
+  end,
+
+  setTimeout = function(timeout)
+    currentTimeout = timeout
+    updateUserSession()
   end,
 }
 return gui
