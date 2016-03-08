@@ -2,6 +2,7 @@ local component = require("component")
 local transposer = component.transposer
 local sides = require("sides")
 local util = require("stack_util")
+local emulator = require("emulator")
 
 local outputSide = sides.up
 local outputSlot = 16+4
@@ -44,6 +45,13 @@ function storage.getOutputInventorySize()
 end
 
 function storage.getStackInOutputSlot(slot)
+  if emulator and slot==1 then
+    local file_serialization = require("file_serialization")
+    local t = file_serialization.load("/sample.txt")
+    if type(t) == "table" then
+      return t
+    end
+  end
   return transposer.getStackInSlot(outputSide, slot + 4)
 end
 
