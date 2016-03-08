@@ -16,6 +16,7 @@ local trade_robot = require("trade_robot_api")
 local emulator = require("emulator")
 local event = require("event")
 local door_lock = require("door_lock")
+local util = require("stack_util")
 
 item_db:load()
 exchange:load()
@@ -423,6 +424,40 @@ function showAddDepositsScreen(username, parent)
 end
 
 
+function showTakeDepositsScreen(username, stack, parent)
+  local d = gui.Dialog.new(36, 11, parent)
+
+  local cw, ch = d:contentSize()
+
+  d:addChild(gui.Label.new(cw, u("Получение депозитов")), 0, 0)
+
+  local count = gui.LargeSpinBox.new(5, stack.size, 1, stack.size)
+  d:addChild(count, math.floor((cw-count.xSize)/2), 3)
+
+  local btn = gui.SimpleButton.new(nil, nil, "take", u("забрать"))
+  d:addChild(btn, 1, 10):setColor(0x00c000)
+
+  local btn = gui.SimpleButton.new(nil, nil, "close", u("закрыть"))
+  d:addChild(btn, cw-btn.xSize-1, 10):setColor(0x00c000)
+
+  local r = d:exec()
+  if r == "take" then
+    local s = util.makeStack(stack, count.sb_value)
+    if storage.moveToOutput(s) then
+      trade_db:removeStack(username, s)
+      trade_robot.dropAll()
+    else
+      -- error
+      storage.moveAllToStorage()
+      local mb = gui.MessageBox.new(u("Произошла непредвиденная ошибка"), nil, parent)
+      mb:exec()
+    end
+    return true
+  end
+  return false
+end
+
+
 function showDepositsScreen(parent)
   local username = gui.getCurrentOwner()
   if username == nil then
@@ -450,16 +485,9 @@ function showDepositsScreen(parent)
       local row = ev[1]
       if ev[2] == 2 then
         local stack = stacks[row]
-        if storage.moveToOutput(stack) then
-          trade_db:removeStack(username, stack)
-          trade_robot.dropAll()
-        else
-          -- error
-          storage.moveAllToStorage()
-          local mb = gui.MessageBox.new(u("Произошла непредвиденная ошибка"), nil, d)
-          local r = mb:exec()
+        if showTakeDepositsScreen(username, stack, d) then
+          return 'respawn'
         end
-        return 'respawn'
       end
     end
   end
