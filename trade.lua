@@ -1,5 +1,5 @@
-local guiTimeout = 60
-local underConstruction = true
+local guiTimeout = 6000
+local underConstruction = false
 
 package.path = package.path .. ';/libs/?.lua'
 local component = require("component")
@@ -67,29 +67,21 @@ function clearScreen()
   gpu.fill(1, 1, w, h, " ")
 end
 
-function clearInputChest()
-  while transposer.transferItem(inputSide, outputSide) do
-  end
-end
-
 function inputSample(parent)
   local stack = nil
 
-  clearInputChest()
+  trade_robot.dropAll()
+  trade_robot.startGathering()
 
-  local i = 0
   local d = gui.MessageBox.new(u("Бросьте предметы на робота"), {u("Отмена"), "cancel"}, parent)
   d.update = function(self)
-    i = i + 1
-    local s = transposer.getStackInSlot(inputSide, 1)
+    local s = trade_robot.getSample()
     if s ~= nil then
       stack = s
       error("done")
     end
   end
   local r = d:exec()
-
-  clearInputChest()
 
   if r ~= nil then
     return
@@ -336,11 +328,6 @@ function showUserLots(s)
   local r = d:exec()
 end
 
-local initialStacks = {
-    {label="Stone", size=64},
-    {label="Diamonds", size=3},
-    {label="Computer case Tier 3", size=2},
-  }
 
 function showAddDepositsScreen(username, parent)
   trade_robot.startGathering()
@@ -357,8 +344,11 @@ function showAddDepositsScreen(username, parent)
         ok = false
         break
       else
-        storage.moveToStorage(slot)
-        trade_db:addStack(username, s)
+        if storage.moveToStorage(slot) then
+          trade_db:addStack(username, s)
+        else
+          ok = false
+        end
       end
     end
   end
@@ -368,6 +358,7 @@ function showAddDepositsScreen(username, parent)
   end
   trade_robot.dropAll()
 end
+
 
 function showDepositsScreen(parent)
   local username = gui.getCurrentOwner()
@@ -383,11 +374,11 @@ function showDepositsScreen(parent)
   d:addChild(gui.Label.new(cw, u("Баланс и депозиты")), 0, 0)
 
   local stacks = trade_db:getAllUserStacks(username)
-  --stacks = initialStacks
   local t = {}
   for _,stack in ipairs(stacks) do
     t[#t+1] = {stackToString(stack), u("забрать")}
   end
+
   local sizeLabel = 8
   local sizeStack = cw - 2 - sizeLabel
   local tbl = d:addChild(gui.Table.new(cw, ch-4, t, {sizeStack, sizeLabel}), 0, 2):setRowColors(0x000000, 0x111111)--:setColor(0xc0c000)
@@ -395,7 +386,16 @@ function showDepositsScreen(parent)
     if type(ev) == "table" then
       local row = ev[1]
       if ev[2] == 2 then
-        table.remove(initialStacks, row)
+        local stack = stacks[row]
+        if storage.moveToOutput(stack) then
+          trade_db:removeStack(username, stack)
+          trade_robot.dropAll()
+        else
+          -- error
+          storage.moveAllToStorage()
+          local mb = gui.MessageBox.new(u("Произошла непредвиденная ошибка"), nil, d)
+          local r = mb:exec()
+        end
         return 'respawn'
       end
     end
@@ -404,7 +404,7 @@ function showDepositsScreen(parent)
   local btnAdd = d:addChild(gui.SimpleButton.new(nil, nil, "add", u("добавить")), 0, ch-1):setColor(0x00c000)
   btnAdd.filterEvent = function(self, ev)
     showAddDepositsScreen(username, d)
-    d:redraw()
+    return 'respawn'
   end
 
   local btn = gui.SimpleButton.new(nil, nil, "close", u("закрыть"))
