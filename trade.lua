@@ -440,7 +440,7 @@ function mainLoop()
     end
     if ev == "add_lot" then
       if inputLot(s) ==true then
-        local mb = gui.MessageBox.new(u("Теперь вам нужно добавить предметы в разделе \"инвентарь\""), nil, s)
+        local mb = gui.MessageBox.new(u("Теперь вам нужно добавить предметы в разделе \"депозиты\""), nil, s)
         mb:exec()
       end
       return
