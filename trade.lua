@@ -1,3 +1,6 @@
+local guiTimeout = 60
+local underConstruction = true
+
 package.path = package.path .. ';/libs/?.lua'
 local component = require("component")
 local file_serialization = require("file_serialization")
@@ -15,6 +18,9 @@ local unicode = require("unicode")
 local exchange = require("trade_exchange")
 local storage = require("trade_storage")
 local trade_robot = require("trade_robot_api")
+local emulator = require("emulator")
+local event = require("event")
+local door_lock = require("door_lock")
 
 exchange:load();
 trade_db:load();
@@ -24,10 +30,21 @@ package.loaded["gui"] = nil
 _G["gui"] = nil
 gui = require("gui")
 
-function print1(...)
+--[[function print1(...)
   term.setCursor(1,1)
   print(...)
-end
+end]]--
+
+
+-- Manage door lock
+door_lock.unlock()
+event.listen("user_login", function()
+  door_lock.lock()
+end)
+event.listen("user_logout", function()
+  door_lock.unlock()
+end)
+
 
 item_db:load();
 
@@ -260,7 +277,7 @@ function drawMainScreen(s)
     buttons = {
       {u("добавить лот"), "add_lot"},
       {u("мои лоты"), "my_lots"},
-      {u("инвентарь"), "inventory"},
+      {u("депозиты"), "inventory"},
       {u("завершить работу"), "logout"},
     }
   end
@@ -287,7 +304,11 @@ function showUserLots(s)
     return
   end
 
-  local d = gui.Dialog.new(s.xSize-10, s.ySize-4, s)
+  local w, h = gpu.getResolution()
+  local d = gui.Dialog.new(math.floor(w*0.8), math.floor(h*0.8), parent)
+
+  local cw, ch = d:contentSize()
+  d:addChild(gui.Label.new(cw, u("Мои лоты")), 0, 0)
 
   -- lot table
   local lots = exchange:getAllLots()
@@ -295,13 +316,12 @@ function showUserLots(s)
   for i=1,#lots do
     local lot = lots[i]
     if lot.username == username then
-      t[#t+1] = {stackToString(lot.from), stackToString(lot.to), tostring(lot.count), "X"}
+      t[#t+1] = {stackToString(lot.from), stackToString(lot.to), tostring(lot.count)}
     end
   end
   local sizeCount = 7
-  local sizeDelete = 1
-  local sizeStack = math.floor((d.xSize-2 - sizeCount - sizeDelete - 2) / 2)
-  local tbl = d:addChild(gui.Table.new(d.xSize-3, d.ySize-7, t, {sizeStack, sizeStack, sizeCount, sizeDelete}), 0, 3):setRowColors(0x000000, 0x111111)--:setColor(0xc0c000)
+  local sizeStack = math.floor((cw - sizeCount) / 2)
+  local tbl = d:addChild(gui.Table.new(cw, ch-5, t, {sizeStack, sizeStack, sizeCount, sizeDelete}), 0, 3):setRowColors(0x000000, 0x111111)--:setColor(0xc0c000)
   tbl.filterEvent = function(self, ev)
     return
   end
@@ -309,7 +329,6 @@ function showUserLots(s)
   d:addChild(gui.Label.new(sizeStack, u("Продажа"), true), 0, 2):setColor(0x333333):setTextColor(0xFFBB24)
   d:addChild(gui.Label.new(sizeStack, u("Покупка"), true), sizeStack, 2):setColor(0x333333):setTextColor(0xFFBB24)
   d:addChild(gui.Label.new(sizeCount, u("Кол-во"), true), sizeStack*2, 2):setColor(0x333333):setTextColor(0xFFBB24)
-  d:addChild(gui.Label.new(tbl.xSize-(sizeStack*2+sizeCount), "X", true), sizeStack*2+sizeCount, 2):setColor(0x333333):setTextColor(0xFFBB24)
 
   local btn = gui.SimpleButton.new(nil, nil, "close", u("закрыть"))
   d:addChild(btn, math.floor((d.xSize-2-btn.xSize)/2), d.ySize-4):setColor(0x00c000)
@@ -397,18 +416,14 @@ end
 local quit = false
 
 function mainLoop()
+  gui.setTimeout(guiTimeout)
+
   local s = gui.Screen.new(0)
   --s:addChild(gui.SimpleButton.new(10, 1, "exit", "exit"), 10, 0):setColor(0xc00000)
 
   drawMainScreen(s)
 
   s:redraw()
-
-  --[[local d = gui.MessageBox.new(u("Скоро открытие"), nil, s)
-  local r = d:exec()
-  computer.beep(523, 0.2);
-  computer.beep(652, 0.2);
-  computer.beep(784, 0.2);]]--
 
   pcall(trade_robot.stopGathering)
   pcall(trade_robot.dropAll)
@@ -462,9 +477,37 @@ function mainLoop()
   end
 end
 
+function mainLoopStub()
+  local s = gui.Screen.new(0)
+  s:redraw()
+
+  local d = gui.MessageBox.new(u("Скоро открытие"), nil, s)
+  local r = d:exec()
+  computer.beep(523, 0.2);
+  computer.beep(652, 0.2);
+  computer.beep(784, 0.2);
+end
+
+if underConstruction then
+  mainLoop = mainLoopStub
+end
+
 clearScreen()
 while not quit do
-  --pcall(mainLoop)
-  mainLoop()
+  local result, reason = pcall(mainLoop)
+
+  if result == false then
+    if emulator then
+      if reason == "exit" then
+        break
+      end
+      clearScreen()
+      term.setCursor(1,1)
+      print(reason)
+      return
+    end
+  else
+    -- Report error
+  end
 end
 clearScreen()
