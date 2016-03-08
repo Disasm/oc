@@ -40,6 +40,17 @@ function storage.getStackSize(stack)
   return cnt
 end
 
+function storage.getMaxStackSize(stack)
+  for side,cache in pairs(storageCache) do
+    for slot,s in pairs(cache) do
+      if util.equalThings(s, stack) then
+        return transposer.getSlotMaxStackSize(side, slot)
+      end
+    end
+  end
+  return 1
+end
+
 function storage.getOutputInventorySize()
   return 16
 end
