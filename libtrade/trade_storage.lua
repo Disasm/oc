@@ -2,7 +2,7 @@ local component = require("component")
 local transposer = component.transposer
 local sides = require("sides")
 local util = require("stack_util")
-local emulator = require("emulator")
+local emulator = require("emulator").isEmulator
 
 local outputSide = sides.up
 local outputSlot = 16+4

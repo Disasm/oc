@@ -1,4 +1,4 @@
-local emulator = require("emulator")
+local emulator = require("emulator").isEmulator
 
 utf8_to_koi8r_table = {
   ["208_144"] = 225,

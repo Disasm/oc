@@ -1,4 +1,4 @@
-local emulator = require("emulator")
+local emulator = require("emulator").isEmulator
 
 local api = {}
 if not emulator then
