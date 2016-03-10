@@ -565,6 +565,9 @@ function mainLoop()
 end
 
 function mainLoopStub()
+  gui.setIdealResolution()
+  gui.setTimeout(guiTimeout)
+
   local s = gui.Screen.new(0)
   s:redraw()
 
