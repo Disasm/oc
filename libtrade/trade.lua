@@ -616,10 +616,10 @@ function main()
         term.setCursor(1,1)
         print(reason)
         return
+      else
+        -- Report error
+        print1(reason)
       end
-    else
-      print1(reason)
-      -- Report error
     end
   end
   clearScreen()
