@@ -319,8 +319,8 @@ function drawMainScreen(s)
   end
 
   s:addChild(gui.Label.new(s.xSize-2, u("Все предложения")), 1, 0)
-  s:addChild(gui.Label.new(sizeStack, u("Продажа"), true), 0, 2):setColor(0x333333):setTextColor(0xFFBB24)
-  s:addChild(gui.Label.new(sizeStack, u("Покупка"), true), sizeStack, 2):setColor(0x333333):setTextColor(0xFFBB24)
+  s:addChild(gui.Label.new(sizeStack, u("Продаётся"), true), 0, 2):setColor(0x333333):setTextColor(0xFFBB24)
+  s:addChild(gui.Label.new(sizeStack, u("В обмен на"), true), sizeStack, 2):setColor(0x333333):setTextColor(0xFFBB24)
   s:addChild(gui.Label.new(sizeCount, u("Кол-во"), true), sizeStack*2, 2):setColor(0x333333):setTextColor(0xFFBB24)
   s:addChild(gui.Label.new(s.xSize-(sizeStack*2+sizeCount), u("Пользователь"), true), sizeStack*2+sizeCount, 2):setColor(0x333333):setTextColor(0xFFBB24)
 
