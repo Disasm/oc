@@ -26,7 +26,7 @@ function api.dropAll()
     end
   end
   robot.select(1)
-  while robot.suck() do
+  while robot.suckDown() do
     robot.dropUp()
   end
 end
@@ -63,7 +63,7 @@ while true do
   if enableGathering then
     robot.select(1)
     while tb.suck() do
-      robot.drop()
+      robot.dropDown()
     end
   end
 end
