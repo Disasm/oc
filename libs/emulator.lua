@@ -1,4 +1,3 @@
-local component = require("component")
-local computer = component.computer
+local computer = require("computer")
 
 return { isEmulator = (computer.isEmulator == true) }
