@@ -3,6 +3,7 @@ local robot = require("robot")
 local component = require("component")
 local tb = component.tractor_beam
 local ic = component.inventory_controller
+local sides = require("sides")
 
 local enableGathering = false
 
@@ -23,12 +24,16 @@ function api.dropAll()
       robot.dropUp()
     end
   end
+  robot.select(1)
+  while robot.suck() do
+    robot.dropUp()
+  end
 end
 
 function api.getSample()
   local stack = nil
-  for slot=1,16 do
-    stack = ic.getStackInInternalSlot(slot)
+  for slot=1,ic.getInventorySize(sides.front) do
+    stack = ic.getStackInSlot(sides.front, slot)
     if stack ~= nil then
       break
     end
@@ -57,6 +62,7 @@ while true do
   if enableGathering then
     robot.select(1)
     while tb.suck() do
+      robot.drop()
     end
   end
 end
