@@ -23,23 +23,21 @@ function startUserSession()
 end
 
 function terminateUserSession()
-  computer.pushSignal("user_logout")
-  currentDeadline = computer.uptime() + 1e6
-  currentOwner = nil
-  error('exit')
+  if currentOwner ~= nil then
+    computer.pushSignal("user_logout")
+    currentOwner = nil
+    error('exit')
+  end
 end
 
 function updateUserSession()
-  if currentOwner == nil then
-    currentDeadline = computer.uptime() + 1e6
-  else
-    currentDeadline = computer.uptime() + currentTimeout
-  end
+  currentDeadline = computer.uptime() + currentTimeout
 end
 
 function checkAutoLogout()
   if computer.uptime() > currentDeadline then
     terminateUserSession()
+    currentDeadline = computer.uptime() + currentTimeout
   end
 end
 
