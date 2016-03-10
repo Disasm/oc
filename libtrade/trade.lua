@@ -600,6 +600,7 @@ function main()
   exchange:load()
   trade_db:load()
   tr.load("/tr_trade.txt")
+  storage.scan()
 
   gpu.setPaletteColor(8,0x111111)
 
