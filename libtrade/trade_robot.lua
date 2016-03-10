@@ -5,6 +5,7 @@ local tb = component.tractor_beam
 local ic = component.inventory_controller
 local sides = require("sides")
 
+local chestSide = sides.bottom
 local enableGathering = false
 
 api = {}
@@ -32,8 +33,8 @@ end
 
 function api.getSample()
   local stack = nil
-  for slot=1,ic.getInventorySize(sides.front) do
-    stack = ic.getStackInSlot(sides.front, slot)
+  for slot=1,ic.getInventorySize(chestSide) do
+    stack = ic.getStackInSlot(chestSide, slot)
     if stack ~= nil then
       break
     end
