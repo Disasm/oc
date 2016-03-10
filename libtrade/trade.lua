@@ -25,7 +25,7 @@ gui = require("gui")
 
 function print1(str)
   f = io.open("/tradelog.txt", "a")
-  f:write(str.."\r\n")
+  f:write(tostring(str).."\r\n")
   f:close()
   term.setCursor(1,1)
   print(str)
@@ -618,6 +618,7 @@ function main()
         return
       end
     else
+      print1(reason)
       -- Report error
     end
   end
