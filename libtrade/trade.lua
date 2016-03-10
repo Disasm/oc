@@ -322,7 +322,8 @@ function drawMainScreen(s)
   s:addChild(gui.Label.new(s.xSize-(sizeStack*2+sizeCount), u("Пользователь"), true), sizeStack*2+sizeCount, 2):setColor(0x333333):setTextColor(0xFFBB24)
 
   buttons = {}
-  if gui.getCurrentOwner() == nil then
+  local username = gui.getCurrentOwner()
+  if username == nil then
     buttons = {
       {u("начать работу"), "start"},
     }
@@ -333,6 +334,9 @@ function drawMainScreen(s)
       {u("депозиты"), "inventory"},
       {u("завершить работу"), "logout"},
     }
+    if (username == "disasm") or (username == "Riateche") then
+      buttons[#buttons+1] = {u("выход"), "exit"}
+    end
   end
 
   local totalSize = 0
@@ -515,6 +519,8 @@ function showDepositsScreen(parent)
   return d:exec()
 end
 
+local quit = false
+
 function mainLoop()
   gui.setIdealResolution()
   gui.setTimeout(guiTimeout)
@@ -561,6 +567,10 @@ function mainLoop()
     if ev == 'redraw' then
       return
     end
+    if ev == "exit" then
+      quit = true
+      return
+    end
   end
 end
 
@@ -591,9 +601,8 @@ function main()
   gpu.setPaletteColor(8,0x111111)
 
   clearScreen()
-  while true do
+  while not quit do
     local result, reason = pcall(mainLoop)
-
     if result == false then
       if emulator then
         if reason == "exit" then
