@@ -5,7 +5,7 @@ local util = require("stack_util")
 local emulator = require("emulator").isEmulator
 
 local outputSide = sides.up
-local outputSlot = 16+4
+local outputSlot = 1
 local storageSides = {sides.left, sides.right, sides.back, sides.down}
 
 local storageCache = {}
@@ -51,7 +51,7 @@ function storage.getMaxStackSize(stack)
 end
 
 function storage.getOutputInventorySize()
-  return 16
+  return transposer.getInventorySize(outputSide)
 end
 
 function storage.getStackInOutputSlot(slot)
@@ -62,7 +62,7 @@ function storage.getStackInOutputSlot(slot)
       return t
     end
   end
-  return transposer.getStackInSlot(outputSide, slot + 4)
+  return transposer.getStackInSlot(outputSide, slot)
 end
 
 function storage.moveToOutput(stack)
@@ -100,7 +100,6 @@ function storage.moveToStorage(slot)
   if stack == nil then
     error("there is no stack in slot "..tostring(slot), 2)
   end
-  slot = slot + 4 -- robot has some internal slots too
 
   local cnt = stack.size
   for side,cache in pairs(storageCache) do
