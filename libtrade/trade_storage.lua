@@ -6,7 +6,7 @@ local emulator = require("emulator").isEmulator
 
 local outputSide = sides.up
 local outputSlot = 1
-local storageSides = {sides.left, sides.right, sides.back, sides.down}
+local storageSides = {sides.left, sides.right, sides.forward, sides.down}
 
 local storageCache = {}
 
