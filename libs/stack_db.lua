@@ -28,6 +28,17 @@ function db:add(stack)
   end
 end
 
+function db:getMaxStackSize(stack)
+  if self.itemMap[util.stackHash(stack)] == nil then
+    return
+  end
+  for _,s in ipairs(self.items) do
+    if util.equalThings(s, stack) then
+      return s.maxSize
+    end
+  end
+end
+
 function db:getAll()
   return self.items
 end
