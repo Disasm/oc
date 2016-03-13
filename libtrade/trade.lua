@@ -141,8 +141,8 @@ function inputLot(parent)
   d:addChild(gui.SimpleButton.new(7, 1, "select2", u("выбор")), 30, 6):setColor(0x00c000)
   d:addChild(gui.SimpleButton.new(9, 1, "sample2", u("образец")), 38, 6):setColor(0x00c000)
 
-  d:addChild(gui.Label.new(17, u("Количество лотов:"), true), 1, 9)
-  d:addChild(count, 19, 9)
+  d:addChild(gui.Label.new(23, u("Количество предложений:"), true), 1, 9)
+  d:addChild(count, 25, 9)
 
   d:addChild(gui.SimpleButton.new(9, 1, "create", u("создать")), 1, 11):setColor(0x00c000)
   d:addChild(gui.SimpleButton.new(10, 1, "cancel", u("отмена")), d.xSize-10-4, 11):setColor(0x00c000)
@@ -254,7 +254,7 @@ function showLot(lotId, parent)
   d:addChild(gui.Label.new(20, u("В обмен на:"), true), 1, 4)
   d:addChild(gui.Label.new(20, u(stackToString(lot.to)), true), 2, 5):setTextColor(0x00c000)
 
-  d:addChild(gui.Label.new(17, u("Количество лотов:"), true), 1, 7)
+  d:addChild(gui.Label.new(23, u("Количество предложений:"), true), 1, 7)
   local text = tostring(lot.real_count)
   if isOwner then
     text = text.." ("..tostring(lot.count)..u(" максимум)")
