@@ -342,6 +342,10 @@ function drawMainScreen(s)
     end
   end
 
+  if username ~= nil then
+    s:addChild(gui.Label.new(unicode.len(username), u(username)), 0, 0)
+  end
+
   local totalSize = 0
   for _,button in ipairs(buttons) do
     totalSize = totalSize + (2 + unicode.len(button[1]))
