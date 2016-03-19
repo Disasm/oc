@@ -25,11 +25,11 @@ if #argv > 0 then
   return
 end
 
-
-print("click on screen")
-local ev = table.pack(event.pull("touch"))
+local ev = table.pack(event.pull("key_up"))
+local username = ev[5]
+print("You are probably "..username)
 local url
-if ev[6] == "Riateche" then
+if username == "Riateche" then
   url = "http://www.idzaaus.org/static/tmp/oc/"
 else
   url = "http://42b.ru/oc/tree/"
