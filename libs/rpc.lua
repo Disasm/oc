@@ -66,19 +66,30 @@ function rpcall(remoteAddress, timeout, retries, method, ...)
   return table.unpack(r)
 end
 
-function rpc.connect(address, timeout, retries)
-  local timeout = timeout or defaultTimeout
-  local retries = retries or defaultRetries
+function rpc.connect(address, timeout, retries, ping_mode)
 
   modem.open(rpcResponsePort)
-  local wrapper = { address = address }
+  local wrapper = { 
+    address = address,
+    timeout = timeout or defaultTimeout, 
+    retries = retries or defaultRetries,
+    ping_mode = ping_mode or "ping_always"
+  }
+  if wrapper.ping_mode == "ping_once" then 
+    if not rpcall(wrapper.address, 1, 1, "ping") then
+      error("RPC host unreachable", 2)
+    end
+  end
+  
   mt = {
     __index = function(obj, funcName)
       return function(...)
-        if not rpcall(obj.address, 1, 1, "ping") then
-          error("RPC host unreachable", 2)
+        if obj.ping_mode == "ping_always" then 
+          if not rpcall(obj.address, 1, 1, "ping") then
+            error("RPC host unreachable", 2)
+          end
         end
-        local r = table.pack(rpcall(obj.address, timeout, retries, "c", funcName, ...))
+        local r = table.pack(rpcall(obj.address, obj.timeout, obj.retries, "c", funcName, ...))
         if r[1] == false then
           error(r[2], 2)
         end

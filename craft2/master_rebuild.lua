@@ -30,7 +30,7 @@ return { run = function()
   local components = {}
   table.insert(components, transposers_interface)
   for i, host in ipairs(config.slaves) do 
-    local v = rpc.connect(hosts[host])
+    local v = rpc.connect(hosts[host], nil, nil, "ping_once")
     table.insert(components, v)
   end
    
