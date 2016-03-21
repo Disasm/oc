@@ -50,6 +50,9 @@ function update_one(name)
   if not filesystem.exists(name_absolute) then 
     error("Failed to download file")  
   end
+  local package_name = string.sub(name, 0, string.len(name) - string.len(".lua"))
+  print("Unloading package "..package_name)
+  package.loaded[package_name] = nil
 end
 
 function print_usage()
