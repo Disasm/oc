@@ -3,6 +3,7 @@ input = require("libcraft/craft_input")
 component = require("component")
 gpu = component.gpu
 text = require("text")
+inspect = require("serialization").serialize 
 
 w, h = gpu.getResolution()
 gpu.fill(1, 1, w, h, " ")
@@ -27,12 +28,19 @@ function debug_print(...)
   end
 end
 
-wrapper = {}
-wrapper.debug = {}
-wrapper.debug.print = debug_print
-wrapper.item_database = require("craft2/item_database")
+wrapper = {
+  item_database = require("craft2/item_database"),
+  terminal = {
+    set_tasks = function(tasks)
+      debug_print("Tasks: "..inspect(tasks))
+    end,
+    log_message = function(obj)
+      gpu.setForeground(obj.color)
+      debug_print(obj.text)
+      gpu.setForeground(0xffffff)      
+    end 
+  }
+}
 
 rpc2.bind(wrapper)
-
-debug_print("aaaa")
-debug_print("zzz")
+print("Welcome to Craft 2 terminal")
