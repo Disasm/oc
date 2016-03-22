@@ -2,40 +2,24 @@ return { run = function()
 
   local config = require("craft2/config")
   local marker_items = require("craft2/marker_items")
-  local rpc = require("libs/rpc")
+  local rpc = require("libs/rpc2")
   local hosts = require("hosts")
   local fser = require("libs/file_serialization")
   local sides = require("sides")
 
   local transposers_interface = require("craft2/transposers_interface")
-
-  local function wrap_transposer(interface, address) 
-    local r = { interface=interface, address=address }
-    function r.get_slots_count(side) 
-      return r.interface.get_slots_count(r.address, side)
-    end
-    function r.get_stack(side, slot) 
-      return r.interface.get_stack(r.address, side, slot)
-    end
-    function r.get_items_count(side, slot)
-      return r.interface.get_items_count(r.address, side, slot)    
-    end
-    function r.transfer(source_side, sink_side, count, source_slot, sink_slot) 
-      if count == nil then count = math.huge end 
-      return r.interface.transfer(r.address, source_side, sink_side, count, source_slot, sink_slot)
-    end  
-    return r
-  end
+  local wrap_transposer = require("craft2/wrap_transposer").wrap_transposer
 
   local components = {}
   table.insert(components, transposers_interface)
   for i, host in ipairs(config.slaves) do 
-    local v = rpc.connect(hosts[host], nil, nil, "ping_once")
+    local v = rpc.connect(hosts[host], nil, nil, "ping_once").transposers_interface
+    v.modem_address = hosts[host]
     table.insert(components, v)
   end
    
   local transposers = {} -- list of { interface, transposer_address }
-  print("111Rebuilding topology has begun.")
+  print("Rebuilding topology has begun.")
   print("Enumerating transposers...")
   for interface_id, interface in ipairs(components) do 
     for _, address in ipairs(interface.get_transposers()) do 
@@ -168,10 +152,11 @@ return { run = function()
   
   local topology_data = { transposers = {}, chests = chests }
   for i, t in ipairs(transposers) do 
-    local v = { transposer_address = t.address, modem_address = t.interface.address }
+    local v = { transposer_address = t.address, modem_address = t.interface.modem_address }
     table.insert(topology_data.transposers, v) 
   end
   fser.save("/home/craft2/topology", topology_data) 
   print("Topology scan completed.")
+  return topology_data
   
 end }
