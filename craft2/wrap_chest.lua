@@ -15,7 +15,7 @@ return { wrap_chest = function(chest_id, chest_data)
   
   for i, d in ipairs(chest_data.transposers) do 
     local entry = { transposer = master.transposers[d.transposer_id], side = d.side }
-    if not r.main_transposer and not entry.transposer.interface.address then 
+    if not r.main_transposer and not entry.transposer.interface.modem_address then 
       -- first local transposer is assigned as main
       r.main_transposer = entry
     end 
@@ -69,23 +69,16 @@ return { wrap_chest = function(chest_id, chest_data)
     end
     return r.main_transposer.transposer.get_items_count(r.main_transposer.side, slot)  
   end
-  function r.find_transposer_for_adjacent_chest(other_chest) 
-    for _, item in ipairs(r.transposers) do 
-      for _, item2 in ipairs(other_chest.transposers) do 
-        if item.transposer == item2.transposer then 
-          return { transposer = item.transposer, side1 = item.side, side2 = item2.side }
-        end
-      end 
-    end
-    return nil
-  end
   function r.transfer_to(other_chest, count, source_slot, sink_slot)
-    if count == nil then count = math.huge end 
-    local t = r.find_transposer_for_adjacent_chest(other_chest)
+    local previous_count = r.get_istack(source_slot)[1]
+    local target_count = previous_count - count
+    local t = r.transposers_for_adjacent_chests[other_chest].id
     if not t then return false end 
     t.transposer.transter(t.side1, t.side2, count, source_slot, sink_slot)
+    -- refresh cache for these 2 slots
     r.get_istack(source_slot, true)
     other_chest.get_istack(sink_slot, true)
+    return r.get_istack(source_slot)[1] == target_count
   end
   
     
@@ -95,7 +88,37 @@ return { wrap_chest = function(chest_id, chest_data)
     r.content_cache = {}
     r.refresh_cache()
   end
+
+  local function find_transposers_for_adjacent_chests() 
+    r.transposers_for_adjacent_chests = {}
+    for i, chest in master.chests do 
+      local found = false 
+      for _, item in ipairs(r.transposers) do 
+        for _, item2 in ipairs(other_chest.transposers) do 
+          if item.transposer == item2.transposer then 
+            local v = { transposer = item.transposer, side1 = item.side, side2 = item2.side }
+            r.transposers_for_adjacent_chests[i] = v
+            found = true 
+            break 
+          end
+        end 
+        if found then break end 
+      end
+    end
+  end
+
+  
+  
+  local function find_paths_to_other_chests()
+    local V = master.chests 
     
+    
+  end
+  
+  function r.calc_final_topology()
+    find_transposers_for_adjacent_chests()
+    find_paths_to_other_chests()
+  end
    
   return r
 end }

@@ -41,7 +41,7 @@ function r.run()
     topology_data = require("craft2/master_rebuild").run()
   end
   r.transposers = {}
-  local chests = {}
+  r.chests = {}
   for i, d in ipairs(topology_data.transposers) do 
     local interface
     if d.modem_address then 
@@ -53,9 +53,12 @@ function r.run()
     table.insert(r.transposers, wrap_transposer(interface, d.transposer_address))
   end
   for i, d in ipairs(topology_data.chests) do 
-    table.insert(chests, wrap_chest(i, d))    
+    table.insert(r.chests, wrap_chest(i, d))    
   end
- 
+  print("Calculating final topology...")
+  for _, chest in r.chests do 
+    chest.calc_final_topology()
+  end
   
   print("Nothing to do here yet!")
   
