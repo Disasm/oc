@@ -5,6 +5,8 @@ local config = require("craft2/config")
 
 if config.role == "slave" then 
   require("craft2/slave").run()
+elseif config.role == "terminal" then 
+  require("craft2/terminal").run()
 elseif config.role == "master" then 
   cmd_args = {...}
   if #cmd_args > 0 then

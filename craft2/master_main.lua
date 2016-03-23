@@ -93,7 +93,15 @@ function r.run()
     table.insert(r.chests, wrap_chest(i, d))    
   end
   l.dbg("Calculating final topology...")
+  local outcoming_chest = nil 
   for _, chest in ipairs(r.chests) do 
+    if chest.role == "outcoming" then
+      if outcoming_chest == nil then 
+        outcoming_chest = chest 
+      else 
+        l.warn("Multiple outcoming chests found.")
+      end
+    end 
     chest.find_transposers_for_adjacent_chests()
   end
   for _, chest in ipairs(r.chests) do 
@@ -126,16 +134,27 @@ function r.run()
   
   local item_storage = require("craft2/item_storage").create_storage()
   
+  function r.on_chest_failure()
+    l.warn("Chest failure! I don't what to do with it yet!")
+  end 
+  
   function process_task(task) 
-    if task.name == "empty_incoming" then 
+    if task.name == "incoming" then 
       for _, chest in ipairs(r.chests) do 
         if chest.role == "incoming" then 
-          if not item_storage.load_all_from_chest(chest) then 
+          if not item_storage.load_all_from_chest(chest, task) then 
             return false 
           end 
         end 
       end 
       return true 
+    elseif task.name == "output" then 
+      if not outcoming_chest then 
+        l.error("No outcoming chest!")
+        task.status = "error"
+        task.status_message = "No outcoming chest!"
+      end 
+      return item_storage.load_to_chest(outcoming_chest, task.count, task.item_id, task)
     else
       l.error("Unknown task")
       task.status = "error"
@@ -189,11 +208,7 @@ function r.run()
     for _, chest in ipairs(r.chests) do 
       chest.save_cache()
     end  
-    if master_is_quitting then 
-      l.info("Master is now offline.")
-    else       
-      event.timer(1, tick)
-    end 
+    event.timer(1, tick)
   end 
   event.timer(1, tick)
   l.info("Master is now live.")

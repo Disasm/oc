@@ -7,5 +7,4 @@ return { run = function()
     item_database = require("craft2/item_database")
   })
   print("Craft 2 Slave RPC interface is now available.")
-  return
 end }

@@ -3,6 +3,10 @@ local fser = require("libs/file_serialization")
 
 return { wrap_chest = function(chest_id, chest_data) 
   local master = require("craft2/master_main")
+  local item_db = require("craft2/item_database")
+  local function max_stack(item_id)
+    return item_db.get(item_id).maxStackSize
+  end
   local l = master.log 
   local r = { 
     id = chest_id,
@@ -62,6 +66,29 @@ return { wrap_chest = function(chest_id, chest_data)
       return r.content_cache[slot]
     end 
   end
+  function r.free_slots_count()
+    local v = 0 
+    for i = 3, r.slots_count do 
+      if r.get_istack(i)[1] == 0 then
+        v = v + 1
+      end 
+    end 
+    return v 
+  end 
+  function r.space_in_existing_slots(item_id)
+    if item_id == nil then error("nil!") end     
+    local total_free_space = 0
+    for i = 3, r.slots_count do 
+      local stack = r.get_istack(i)
+      if stack[2] == item_id then 
+        local mx = max_stack(item_id)
+        local free_space = mx - stack[1]
+        total_free_space = total_free_space + free_space 
+      end 
+    end
+    return total_free_space
+  
+  end
   
   
   function r.get_items_count(slot) 
@@ -70,17 +97,87 @@ return { wrap_chest = function(chest_id, chest_data)
     end
     return r.main_transposer.transposer.get_items_count(r.main_transposer.side, slot)  
   end
-  function r.transfer_to(other_chest, count, source_slot, sink_slot)
+  
+  function r.direct_transfer_to(other_chest, count, source_slot, sink_slot)
     local previous_count = r.get_istack(source_slot)[1]
     local target_count = previous_count - count
-    local t = r.transposers_for_adjacent_chests[other_chest].id
-    if not t then return false end 
-    t.transposer.transter(t.side1, t.side2, count, source_slot, sink_slot)
+    if r.id == other_chest.id then 
+      local t = r.main_transposer
+      t.transposer.transfer(t.side, t.side, count, source_slot, sink_slot)
+    else 
+      local t = r.transposers_for_adjacent_chests[other_chest].id
+      if not t then return false end 
+      t.transposer.transter(t.side1, t.side2, count, source_slot, sink_slot)
+    end 
     -- refresh cache for these 2 slots
     r.get_istack(source_slot, true)
     other_chest.get_istack(sink_slot, true)
     return r.get_istack(source_slot)[1] == target_count
   end
+  
+  function r.transfer_to(other_chest, count, source_slot, sink_slot)
+    if count <= 0 then 
+      l.warn("chest.transer_to: invalid count")
+      return false 
+    end 
+    local original_source_stack = r.get_istack(source_slot)
+    if original_source_stack[1] == 0 then 
+      l.warn("chest.transer_to: source stack is empty")
+      return false     
+    end
+    local path = r.paths[other_chest.id]
+    if #path == 1 then path = { r.id, r.id } end 
+    local current_step = 1 
+    local current_slot = source_slot
+    for current_step = 1, (#path-1) do 
+      local current_chest = r.chests[path[current_step]]
+      if current_step + 1 == #path then -- last step 
+        local target_count_left = original_source_stack[1] - count 
+        local source_stack = current_chest.get_istack(current_slot)
+        if source_stack[1] ~= original_source_stack[1] or source_stack[2] ~= original_source_stack[2] then 
+          l.warn("chest.transer_to: stack is lost!")
+          master.on_chest_failure()
+          return false 
+        end 
+        local function try_final_transfer(slot)
+          current_chest.direct_transfer_to(other_chest, source_stack[1] - target_count_left, current_slot, slot)
+          source_stack = current_chest.get_istack(current_slot)
+          return (source_stack[1] == target_count_left)
+        end 
+        
+        if sink_slot == nil then 
+          -- first, try to merge into filled slots 
+          for i = 3, other_chest.slots_count do 
+            local stack = other_chest.get_istack(i)
+            if stack[2] == source_stack[2] then 
+              if try_final_transfer(i) then return true end 
+            end 
+          end 
+          -- 2nd, try to put into empty slots 
+          for i = 3, other_chest.slots_count do 
+            local stack = other_chest.get_istack(i)
+            if stack[1] == 0 then 
+              if try_final_transfer(i) then return true end 
+            end 
+          end 
+        else 
+          if try_final_transfer(sink_slot) then return true end 
+        end 
+        l.warn("chest.transer_to: last transfer failed (probably no free slots)")
+        master.on_chest_failure()
+        return false 
+      else 
+        local next_chest_id = path[current_step + 1]
+        local result = current_chest.direct_transfer_to(r.chests[next_chest_id], count, current_slot, 1)
+        if not result then 
+          master.on_chest_failure()
+          return false
+        end 
+        current_slot = 1
+      end
+      current_step = current_step + 1 
+    end 
+  end 
   
     
   r.content_cache = fser.load(content_cache_filename)

@@ -1,14 +1,14 @@
-rpc2 = require("libs/rpc2")
-input = require("libcraft/craft_input")
-component = require("component")
-gpu = component.gpu
-text = require("text")
-inspect = require("serialization").serialize 
+local rpc = require("libs/rpc2")
+local input = require("libcraft/craft_input")
+local component = require("component")
+local gpu = component.gpu
+local text = require("text")
+local inspect = require("serialization").serialize 
+local config = require("craft2/config")
+local hosts = require("hosts")
 
-w, h = gpu.getResolution()
-gpu.fill(1, 1, w, h, " ")
+local debugWidth
 
-debugWidth = math.floor(w * 0.3)
 function debug_print(...)
   local t = table.pack(...)
   if t.n == 0 then
@@ -28,19 +28,31 @@ function debug_print(...)
   end
 end
 
-wrapper = {
-  item_database = require("craft2/item_database"),
-  terminal = {
-    set_tasks = function(tasks)
-      debug_print("Tasks: "..inspect(tasks))
-    end,
-    log_message = function(obj)
-      gpu.setForeground(obj.color)
-      debug_print(obj.text)
-      gpu.setForeground(0xffffff)      
-    end 
-  }
-}
+-- local computer = require("computer")
 
-rpc2.bind(wrapper)
-print("Welcome to Craft 2 terminal")
+return { run = function() 
+  local master = rpc.connect(hosts[config.master]).master
+
+  local w, h = gpu.getResolution()
+  gpu.fill(1, 1, w, h, " ")
+
+  debugWidth = math.floor(w * 0.3)
+
+  local wrapper = {
+    item_database = require("craft2/item_database"),
+    terminal = {
+      set_tasks = function(tasks)
+        debug_print("Tasks: "..inspect(tasks))
+      end,
+      log_message = function(obj)
+        gpu.setForeground(obj.color)
+        debug_print(obj.text)
+        gpu.setForeground(0xffffff)      
+      end 
+    }
+  }
+
+  rpc.bind(wrapper)
+  print("Welcome to Craft 2 terminal")
+  
+end }
