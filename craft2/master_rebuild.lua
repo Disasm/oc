@@ -6,6 +6,7 @@ return { run = function()
   local hosts = require("hosts")
   local fser = require("libs/file_serialization")
   local sides = require("sides")
+  local shell = require("shell")
 
   local transposers_interface = require("craft2/transposers_interface")
   local wrap_transposer = require("craft2/wrap_transposer").wrap_transposer
@@ -20,6 +21,9 @@ return { run = function()
    
   local transposers = {} -- list of { interface, transposer_address }
   print("Rebuilding topology has begun.")
+  print("Removing content cache...")
+  shell.execute(string.format("rm -r %s", require("craft2/paths").content_cache))
+  
   print("Enumerating transposers...")
   for interface_id, interface in ipairs(components) do 
     for _, address in ipairs(interface.get_transposers()) do 
@@ -155,7 +159,7 @@ return { run = function()
     local v = { transposer_address = t.address, modem_address = t.interface.modem_address }
     table.insert(topology_data.transposers, v) 
   end
-  fser.save("/home/craft2/topology", topology_data) 
+  fser.save(require("craft2/paths").topology, topology_data) 
   print("Topology scan completed.")
   return topology_data
   

@@ -4,7 +4,7 @@ function item_hash(stack)
   return stack.name .. "_" .. stack.label 
 end
 
-db_path = "/home/craft2/item_db/"
+db_path = require("craft2/paths").item_db
 db_last_id_path = db_path .. "last_id"
 
 function path_from_id(id)

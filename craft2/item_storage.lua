@@ -38,31 +38,41 @@ function module_r.create_storage()
   
   function r.load_all_from_chest(source_chest, task) 
     for i = 1, source_chest.slots_count do 
-      local stack = table.unpack(source_chest.get_istack(i))
-      if stack[1] > 0 then 
-        local max_score = -1
-        local max_score_chest = nil
-        for _, sink_chest in ipairs(master.chests) do 
-          if sink_chest.role == "storage" then 
-            local score = score_for_adding_items(stack, source_chest, sink_chest)
-            if score > max_score then 
-              max_score = score 
-              max_score_chest = sink_chest
+      l.dbg("Processing slot "..i)
+      if i ~= 2 then 
+        l.dbg("test1")
+        local stack = source_chest.get_istack(i)
+        l.dbg("test2 "..l.inspect(stack))        
+        if stack[1] > 0 then 
+          l.dbg("stack[1] > 0")
+          local max_score = -1
+          local max_score_chest = nil
+          for j, sink_chest in ipairs(master.chests) do 
+            l.dbg("iterating: chest "..j)
+            if sink_chest.role == "storage" then 
+              l.dbg("Calling score_for_adding_items")
+              local score = score_for_adding_items(stack, source_chest, sink_chest)
+              if score > max_score then 
+                max_score = score 
+                max_score_chest = sink_chest
+              end 
             end 
           end 
+          if not max_score_chest then 
+            task.status = "error"
+            task.status_message = "No available chests to store items!"
+            l.dbg("fail 1")
+            return false 
+          end 
+          l.dbg(string.format("transfer from slot %d into chest %d", i, max_score_chest.id))
+          if not source_chest.transfer_to(max_score_chest, stack[1], i, nil) then 
+            task.status = "error"
+            task.status_message = "Transfer failed."
+            l.dbg("fail 2")
+            return false 
+          end 
         end 
-        if not max_score_chest then 
-          task.status = "error"
-          task.status_message = "No available chests to store items!"
-          return false 
-        end 
-        l.dbg(string.format("transfer from slot %d into chest %d", i, max_score_chest.id))
-        if not source_chest.transfer_to(max_score_chest, stack[1], i, nil) then 
-          task.status = "error"
-          task.status_message = "Transfer failed."
-          return false 
-        end 
-      end 
+      end
     end 
     l.info("Loading items from chest succeeded.")
     return true  
@@ -82,26 +92,35 @@ function module_r.create_storage()
   end
   
   function r.load_to_chest(sink_chest, count, item_id, task) 
+    if task.count_left == nil then 
+      task.count_left = count
+    end 
     -- todo: select closest and fullest chest 
-    local count_left = count 
+    l.dbg(string.format("Loading %d x %d to chest", count, item_id))
     for _, chest in ipairs(master.chests) do 
       for i = 3, chest.slots_count do 
-        local stack = chest.get_istack(i)
-        if item_id == stack[2] then 
-          local current_count = math.max(count_left, stack[1])
-          if not chest.transfer_to(sink_chest, current_count, i, nil) then 
-            task.status = "error"
-            task.status_message = "Transfer failed."
-            return false 
+        if chest.role == "storage" then 
+          local stack = chest.get_istack(i)
+          if item_id == stack[2] then 
+            local current_count = math.min(task.count_left, stack[1])
+            l.dbg(string.format("Transfering %d items from chest %d", current_count, chest.id))
+            if not chest.transfer_to(sink_chest, current_count, i, nil) then 
+              task.status = "error"
+              task.status_message = "Transfer failed."
+              return false 
+            end 
+            task.count_left = task.count_left - current_count
+            if task.count_left == 0 then 
+              l.info("Loading items into chest succeeded.")
+              return true 
+            end 
           end 
-          count_left = count_left - current_count
-          if count_left == 0 then 
-            l.info("Loading items into chest succeeded.")
-            return true 
-          end 
-        end 
+        end
       end
     end 
+    
+    l.error("Not enough items.")
+    return false 
   
   end 
   

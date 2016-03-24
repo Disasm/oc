@@ -29,6 +29,9 @@ function r.log.message(obj)
     obj.color = 0xff0000
   elseif obj.level == "debug" then 
     obj.color = 0xb0b0b0
+    if not config.enable_debug_log then 
+      return 
+    end 
   else 
     obj.color = 0xffffff
   end 
@@ -60,7 +63,7 @@ function r.process_istack(istack)
     for _, d in ipairs(remote_databases) do 
       d.set(new_id, istack.unknown_stack)
     end 
-    return { new_id, istack[1] }
+    return { istack[1], new_id }
   else
     return istack
   end
@@ -72,9 +75,9 @@ function r.run()
   l.info("Master is starting...")
 
   l.dbg("Loading topology")
-  local topology_data = fser.load("/home/craft2/topology")
+  local topology_data = fser.load(require("craft2/paths").topology)
   if not topology_data then 
-    l.warning("No topology file. Running rebuild...")
+    l.warn("No topology file. Running rebuild...")
     topology_data = require("craft2/master_rebuild").run()
   end
   r.transposers = {}
@@ -89,13 +92,14 @@ function r.run()
     end
     table.insert(r.transposers, wrap_transposer(interface, d.transposer_address))
   end
+  r.chests_count = #(topology_data.chests)
   for i, d in ipairs(topology_data.chests) do 
     table.insert(r.chests, wrap_chest(i, d))    
   end
   l.dbg("Calculating final topology...")
   local outcoming_chest = nil 
   for _, chest in ipairs(r.chests) do 
-    if chest.role == "outcoming" then
+    if chest.role == "output" then
       if outcoming_chest == nil then 
         outcoming_chest = chest 
       else 
@@ -140,77 +144,109 @@ function r.run()
   
   function process_task(task) 
     if task.name == "incoming" then 
+      l.dbg("Iterating over incoming chests")
       for _, chest in ipairs(r.chests) do 
         if chest.role == "incoming" then 
+          l.dbg("Processing incoming chest "..chest.id)
           if not item_storage.load_all_from_chest(chest, task) then 
             return false 
           end 
         end 
       end 
+      l.dbg("Incoming task completed")
       return true 
     elseif task.name == "output" then 
       if not outcoming_chest then 
-        l.error("No outcoming chest!")
-        task.status = "error"
-        task.status_message = "No outcoming chest!"
+        l.error("Output task: no outcoming chest!")
+        return true 
+      end 
+      if type(task.item_id) ~= "number" then 
+        l.error("Output task: item_id is not a number!")
+        return true       
+      end
+      if type(task.count) ~= "number" then 
+        l.error("Output task: count is not a number!")
+        return true             
+      end 
+      if task.count < 1 then 
+        l.error("Output task: count is not positive enough.")
+        return true             
       end 
       return item_storage.load_to_chest(outcoming_chest, task.count, task.item_id, task)
     else
       l.error("Unknown task")
-      task.status = "error"
-      task.status_message = "Unknown task"
-      return false
+      return true
     end 
   end 
   
   local next_task_id = 1 
+  local tick_interval = 1
+  local tick_interval_after_error = 10
   
   function tick()
-    while #pending_commands > 0 do 
-      local cmd = pending_commands[1]
-      table.remove(pending_commands, 1)
-      if cmd.action == "add_task" then 
-        cmd.task.id = next_task_id
-        next_task_id = next_task_id + 1
-        table.insert(tasks, cmd.task)
-        l.dbg("Task added: "..l.inspect(cmd.task))
-        send_tasks_if_changed()
-      elseif cmd.action == "remove_task" then 
-        local ok = false 
-        for i, task in ipairs(tasks) do 
-          if task.id == cmd.task_id then 
-            table.remove(tasks, i)
-            l.dbg("Task is removed by user.")
-            break
+    local is_ok, err = xpcall(function()
+      while #pending_commands > 0 do 
+        local cmd = pending_commands[1]
+        table.remove(pending_commands, 1)
+        if cmd.action == "add_task" then 
+          cmd.task.id = next_task_id
+          next_task_id = next_task_id + 1
+          table.insert(tasks, cmd.task)
+          l.dbg("Task added: "..l.inspect(cmd.task))
+          send_tasks_if_changed()
+        elseif cmd.action == "remove_task" then 
+          local ok = false 
+          for i, task in ipairs(tasks) do 
+            if task.id == cmd.task_id then 
+              table.remove(tasks, i)
+              l.dbg("Task is removed by user.")
+              ok = true
+              break
+            end 
           end 
+          if not ok then 
+            l.error("Cannot remove task: task not found.")
+          end 
+          send_tasks_if_changed()
+        elseif cmd.action == "quit" then 
+          master_is_quitting = true       
+          l.info("Master is now offline.")
+          return 
+        elseif cmd.action == "throw_error" then 
+          error("No, it's YOUR fault.")
+        else 
+          l.error("Invalid action.")
         end 
-        if not ok then 
-          l.error("Cannot remove task: task not found.")
-        end 
-        send_tasks_if_changed()
-      elseif cmd.action == "quit" then 
-        master_is_quitting = true       
-        l.info("Master is now offline.")
-        return 
       end 
-    end 
 
-    table.sort(tasks, function(a,b) return (a.priority or 0) > (b.priority or 0) end)
-    for i, task in ipairs(tasks) do 
-      l.dbg("Running task: "..l.inspect(task))
-      if process_task(task) then 
-        table.remove(tasks, i)
-        l.dbg("Task is completed.")
-        break
+      table.sort(tasks, function(a,b) return (a.priority or 0) > (b.priority or 0) end)
+      for i, task in ipairs(tasks) do 
+        l.dbg("Running task: "..l.inspect(task))
+        if process_task(task) then 
+          table.remove(tasks, i)
+          l.dbg("Task is completed.")
+          break
+        end 
+      end 
+      send_tasks_if_changed()
+      for _, chest in ipairs(r.chests) do 
+        chest.save_cache()
+      end  
+      if not master_is_quitting then
+        event.timer(tick_interval, tick)
+      end 
+    end, function(err) 
+      return { message = tostring(err), traceback = debug.traceback() }
+    end)
+    if not is_ok then     
+      l.error("Error: "..err.message)
+      print(err.traceback)
+      if not master_is_quitting then
+        event.timer(tick_interval_after_error, tick)
       end 
     end 
-    send_tasks_if_changed()
-    for _, chest in ipairs(r.chests) do 
-      chest.save_cache()
-    end  
-    event.timer(1, tick)
   end 
-  event.timer(1, tick)
+  event.timer(tick_interval, tick)
   l.info("Master is now live.")
   
 end 

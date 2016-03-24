@@ -5,7 +5,7 @@ return { wrap_chest = function(chest_id, chest_data)
   local master = require("craft2/master_main")
   local item_db = require("craft2/item_database")
   local function max_stack(item_id)
-    return item_db.get(item_id).maxStackSize
+    return item_db.get(item_id).maxSize
   end
   local l = master.log 
   local r = { 
@@ -15,8 +15,9 @@ return { wrap_chest = function(chest_id, chest_data)
     transposers = {} 
   }
   r.can_transfer = (r.role == "storage")
-  local content_cache_filename = string.format("/home/craft2/content_cache/%03d", r.id)
+  local content_cache_filename = require("craft2/paths").content_cache .. string.format("%03d", r.id)
   local content_cache_modified = false
+  r.content_cache_enabled = (r.role == "storage")
   
   for i, d in ipairs(chest_data.transposers) do 
     local entry = { transposer = master.transposers[d.transposer_id], side = d.side }
@@ -38,6 +39,7 @@ return { wrap_chest = function(chest_id, chest_data)
   end
   
   function r.refresh_cache(slot)
+    if not r.content_cache_enabled then return end 
     if slot == nil then 
       for i = 1, r.slots_count do 
         r.get_istack(i, true)
@@ -48,19 +50,22 @@ return { wrap_chest = function(chest_id, chest_data)
     end 
   end 
   function r.save_cache()
-    if content_cache_modified then 
+    if r.content_cache_enabled and content_cache_modified then 
       fser.save(content_cache_filename, r.content_cache)
+      content_cache_modified = false 
     end 
   end 
-  function r.get_istack(slot, no_cache) 
+  function r.get_istack(slot, no_cache)   
     if slot < 1 or slot > r.slots_count then 
       error("chest.get_stack: slot out of bounds")
     end
-    if no_cache then
+    if not r.content_cache_enabled or no_cache then
       local v = r.main_transposer.transposer.get_istack(r.main_transposer.side, slot)
       v = master.process_istack(v)
-      r.content_cache[slot] = v
-      content_cache_modified = true 
+      if r.content_cache_enabled then 
+        r.content_cache[slot] = v
+        content_cache_modified = true 
+      end 
       return v
     else 
       return r.content_cache[slot]
@@ -101,21 +106,27 @@ return { wrap_chest = function(chest_id, chest_data)
   function r.direct_transfer_to(other_chest, count, source_slot, sink_slot)
     local previous_count = r.get_istack(source_slot)[1]
     local target_count = previous_count - count
+    l.dbg(string.format("direct transfer %d -> %d", r.id, other_chest.id))
     if r.id == other_chest.id then 
       local t = r.main_transposer
       t.transposer.transfer(t.side, t.side, count, source_slot, sink_slot)
     else 
-      local t = r.transposers_for_adjacent_chests[other_chest].id
+      local t = r.transposers_for_adjacent_chests[other_chest.id]
       if not t then return false end 
-      t.transposer.transter(t.side1, t.side2, count, source_slot, sink_slot)
+      t.transposer.transfer(t.side1, t.side2, count, source_slot, sink_slot)
     end 
     -- refresh cache for these 2 slots
-    r.get_istack(source_slot, true)
-    other_chest.get_istack(sink_slot, true)
+    if r.content_cache_enabled then
+      r.get_istack(source_slot, true)
+    end
+    if other_chest.content_cache_enabled then
+      other_chest.get_istack(sink_slot, true)
+    end 
     return r.get_istack(source_slot)[1] == target_count
   end
   
   function r.transfer_to(other_chest, count, source_slot, sink_slot)
+    l.dbg(string.format("chest(%d).transer_to(%d, %d, %d, %s)", r.id, other_chest.id, count, source_slot, tostring(sink_slot)))
     if count <= 0 then 
       l.warn("chest.transer_to: invalid count")
       return false 
@@ -125,12 +136,12 @@ return { wrap_chest = function(chest_id, chest_data)
       l.warn("chest.transer_to: source stack is empty")
       return false     
     end
-    local path = r.paths[other_chest.id]
+    local path = r.paths_to_chests[other_chest.id]
     if #path == 1 then path = { r.id, r.id } end 
     local current_step = 1 
     local current_slot = source_slot
     for current_step = 1, (#path-1) do 
-      local current_chest = r.chests[path[current_step]]
+      local current_chest = master.chests[path[current_step]]
       if current_step + 1 == #path then -- last step 
         local target_count_left = original_source_stack[1] - count 
         local source_stack = current_chest.get_istack(current_slot)
@@ -168,7 +179,7 @@ return { wrap_chest = function(chest_id, chest_data)
         return false 
       else 
         local next_chest_id = path[current_step + 1]
-        local result = current_chest.direct_transfer_to(r.chests[next_chest_id], count, current_slot, 1)
+        local result = current_chest.direct_transfer_to(master.chests[next_chest_id], count, current_slot, 1)
         if not result then 
           master.on_chest_failure()
           return false
@@ -179,12 +190,13 @@ return { wrap_chest = function(chest_id, chest_data)
     end 
   end 
   
-    
-  r.content_cache = fser.load(content_cache_filename)
-  if not r.content_cache then 
-    l.info("No cache file. Refreshing cache...")
-    r.content_cache = {}
-    r.refresh_cache()
+  if r.content_cache_enabled then 
+    r.content_cache = fser.load(content_cache_filename)
+    if not r.content_cache then 
+      l.info(string.format("Refreshing cache for chest %d / %d", r.id, master.chests_count))
+      r.content_cache = {}
+      r.refresh_cache()
+    end
   end
 
   function r.find_transposers_for_adjacent_chests() 
