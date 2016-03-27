@@ -85,11 +85,13 @@ function module_r.create_storage()
     end
     local result = {}
     for _, chest in ipairs(master.chests) do
-      for i = 3, chest.slots_count do
-        local stack = chest.get_istack(i)
-        local item_id = stack[2]
-        if item_id ~= nil and ids_as_keys[item_id] then
-          result[item_id] = (result[item_id] or 0) + stack[1]
+      if chest.role == "storage" then
+        for i = 3, chest.slots_count do
+          local stack = chest.get_istack(i)
+          local item_id = stack[2]
+          if item_id ~= nil and ids_as_keys[item_id] then
+            result[item_id] = (result[item_id] or 0) + stack[1]
+          end
         end
       end
     end
