@@ -5,8 +5,8 @@ local util = require("libs/stack_util")
 local serialization = require("serialization")
 local term = require("term")
 
-local master_cmd = function(cmd)
-  print("master.command("..serialization.serialize(cmd)..")")
+local master_enqueue = function(cmd)
+  print("master.enqueue_command("..serialization.serialize(cmd)..")")
 end
 
 local logFile = filesystem.open("/log.txt", "a")
@@ -78,12 +78,12 @@ end
 function getItemsDialog()
   local id, n, s = inputItem()
   if id ~= nil then
-    master_cmd({cmd="add_task", task={name="output", item_id=id, count=n}})
+    master_enqueue({action="add_task", task={name="output", item_id=id, count=n}})
   end
 end
 
 function cleanIncoming()
-  master_cmd({cmd="add_task", task={name="incoming"}})
+  master_enqueue({action="add_task", task={name="incoming"}})
 end
 
 return function()
@@ -92,7 +92,7 @@ return function()
     local rpc = require("libs/rpc2")
     local hosts = require("hosts")
     local h = rpc.connect(hosts.master)
-    master_cmd = h.master.command
+    master_enqueue = h.master.enqueue_command
   end
 
   while true do
