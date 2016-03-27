@@ -3,6 +3,7 @@ local db = require("craft2/item_database")
 local filesystem = require("filesystem")
 local util = require("libs/stack_util")
 local serialization = require("serialization")
+local term = require("term")
 
 local master_cmd = function(cmd)
   print("master.command("..serialization.serialize(cmd)..")")

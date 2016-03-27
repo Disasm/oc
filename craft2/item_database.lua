@@ -84,7 +84,7 @@ function r.find_inexact(name)
   name = string.lower(name)
 
   local ids = {}
-  for filename in filesystem.list() do
+  for filename in filesystem.list(db_path .. "by_hash/") do
     if string.lower(filename):find(name) ~= nil then
       local id = fser.load(path_from_item_hash(filename))
       local s = r.get(id)
