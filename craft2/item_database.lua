@@ -1,7 +1,9 @@
 local fser = require("libs/file_serialization")
+local filesystem = require("filesystem")
+
 
 function item_hash(stack)
-  return stack.name .. "_" .. stack.label 
+  return stack.name .. "_" .. stack.label
 end
 
 db_path = require("craft2/paths").item_db
@@ -12,7 +14,7 @@ function path_from_id(id)
 end
 
 function path_from_item_hash(hash)
-  return db_path .. "by_hash/" .. hash 
+  return db_path .. "by_hash/" .. hash
 end
 
 
@@ -27,7 +29,7 @@ local hash_to_id_cache = {}
 local r = {}
 
 function r.hash_to_id(hash)
-  if hash_to_id_cache[hash] then 
+  if hash_to_id_cache[hash] then
     return hash_to_id_cache[hash]
   end
   local v = fser.load(path_from_item_hash(hash))
@@ -46,20 +48,20 @@ function r.get(id)
     return data_cache[id]
   end
   local v = fser.load(path_from_id(id))
-  if not v then return nil end 
-  data_cache[id] = v 
+  if not v then return nil end
+  data_cache[id] = v
   hash_to_id_cache[item_hash(v)] = id
   return v
 end
 
-function r.set(id, data) 
+function r.set(id, data)
   fser.save(path_from_id(id), data)
   data_cache[id] = data
   local hash = item_hash(data)
   hash_to_id_cache[hash] = id
   fser.save(path_from_item_hash(hash), id)
-  if last_id < id then 
-    last_id = id 
+  if last_id < id then
+    last_id = id
     fser.save(db_last_id_path, last_id)
   end
 end
@@ -67,15 +69,31 @@ end
 function r.add(data)
   local known_id = r.stack_to_id(data)
   local id = nil
-  if known_id then 
-    id = known_id 
-  else 
-    last_id = last_id + 1 
+  if known_id then
+    id = known_id
+  else
+    last_id = last_id + 1
     fser.save(db_last_id_path, last_id)
-    id = last_id 
+    id = last_id
   end
   r.set(id, data)
   return id
+end
+
+function r.find_inexact(name)
+  name = string.lower(name)
+
+  local ids = {}
+  for filename in filesystem.list() do
+    if string.lower(filename):find(name) ~= nil then
+      local id = fser.load(path_from_item_hash(filename))
+      local s = r.get(id)
+      if string.lower(s.label):find(name) ~= nil then
+        ids[#ids+1] = id
+      end
+    end
+  end
+  return ids
 end
 
 return r
