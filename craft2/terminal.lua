@@ -3,7 +3,7 @@ local input = require("libcraft/craft_input")
 local component = require("component")
 local gpu = component.gpu
 local text = require("text")
-local inspect = require("serialization").serialize 
+local inspect = require("serialization").serialize
 local config = require("craft2/config")
 local hosts = require("hosts")
 
@@ -30,7 +30,7 @@ end
 
 -- local computer = require("computer")
 
-return { run = function() 
+return { run = function()
   local master = rpc.connect(hosts[config.master]).master
 
   local w, h = gpu.getResolution()
@@ -47,12 +47,12 @@ return { run = function()
       log_message = function(obj)
         gpu.setForeground(obj.color)
         debug_print(obj.text)
-        gpu.setForeground(0xffffff)      
-      end 
+        gpu.setForeground(0xffffff)
+      end
     }
   }
 
   rpc.bind(wrapper)
   print("Welcome to Craft 2 terminal")
-  
+
 end }
