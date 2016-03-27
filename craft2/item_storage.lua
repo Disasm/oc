@@ -126,7 +126,9 @@ function module_r.create_storage()
       end
     end
 
-    l.error("Not enough items.")
+    --l.error("Not enough items.")
+    task.status = "error"
+    task.status_message = "Not enough items."
     return false
 
   end
