@@ -55,4 +55,6 @@ return { run = function()
   rpc.bind(wrapper)
   print("Welcome to Craft 2 terminal")
 
+  require("craft2/terminal_gui")()
+
 end }
