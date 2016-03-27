@@ -4,7 +4,10 @@ local filesystem = require("filesystem")
 local util = require("libs/stack_util")
 local serialization = require("serialization")
 local term = require("term")
+local shell = require("shell")
+local gpu = require("component").gpu
 
+local master = nil
 local master_enqueue = function(cmd)
   print("master.enqueue_command("..serialization.serialize(cmd)..")")
 end
@@ -42,12 +45,23 @@ function inputItem()
     print("Item not found. Try again.")
   end
 
+  local counts = master.get_stored_item_counts(ids)
+
   local id = nil
   if #ids > 1 then
     print("Select one:");
     for i = 1,#ids do
       local s = db.get(ids[i])
-      print(i..": "..s.label)
+      local count = counts[ids[i]] or 0
+
+      local oldFg = gpu.getForeground()
+      if count == 0 then
+        gpu.setForeground(0xffff30)
+      else
+        gpu.setForeground(0x30ff30)
+      end
+      print(i..": "..s.label.." ("..count..")")
+      gpu.setForeground(oldFg)
     end
     i = input.getNumber()
     if i == nil then
@@ -92,6 +106,7 @@ return function()
     local rpc = require("libs/rpc2")
     local hosts = require("hosts")
     local h = rpc.connect(hosts.master)
+    master = h.master
     master_enqueue = h.master.enqueue_command
   end
 
@@ -102,6 +117,7 @@ return function()
     print("g: Get items")
     --print("c: Craft")
     print("i: Clean incoming")
+    print("u: Update")
     print("q: Quit")
     while true do
       local ch = input.getChar()
@@ -112,6 +128,9 @@ return function()
       if ch == "i" then
         cleanIncoming()
         break
+      end
+      if ch == "u" then
+        shell.execute("up")
       end
       if ch == "q" then
         return
