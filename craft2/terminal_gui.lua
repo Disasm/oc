@@ -95,7 +95,6 @@ return function()
     master_cmd = h.master.command
   end
 
-  term.clear()
   while true do
     print("")
     print("")
