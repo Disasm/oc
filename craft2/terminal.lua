@@ -2,6 +2,7 @@ local rpc = require("libs/rpc2")
 local input = require("libcraft/craft_input")
 local component = require("component")
 local gpu = component.gpu
+local unicode = require("unicode")
 local text = require("text")
 local term = require("term")
 local inspect = require("serialization").serialize
@@ -74,9 +75,17 @@ return { run = function()
   logWindow = window.create(w - debugWidth+1, 1, debugWidth, h)
   logWindow:clear()
   local consoleHeight = math.floor(h * 0.5)
-  term.setViewport(w - debugWidth, consoleHeight, 0, 0)
-  taskWindow = window.create(1, consoleHeight+1, w-debugWidth, h-consoleHeight)
+  term.setViewport(w-debugWidth-1, consoleHeight, 0, 0)
+  taskWindow = window.create(1, consoleHeight+2, w-debugWidth-1, h-consoleHeight)
   taskWindow:clear()
+
+  for i=1,w-debugWidth do
+    gpu.set(i, consoleHeight+1, unicode.char(0x2550))
+  end
+  for i=1,h do
+    gpu.set(w - debugWidth, i, unicode.char(0x2551))
+  end
+  gpu.set(w - debugWidth, consoleHeight+1, unicode.char(0x2563))
 
   local wrapper = {
     item_database = require("craft2/item_database"),
