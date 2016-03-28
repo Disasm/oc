@@ -100,6 +100,15 @@ function cleanIncoming()
   master_enqueue({action="add_task", task={name="incoming"}})
 end
 
+function killTask()
+  print("Enter task ID (enter to cancel):")
+  local id = input.getNumber()
+  if id == nil then
+    return
+  end
+  master_enqueue({action="remove_task", task_id=id})
+end
+
 return function()
   local isEmulator = require("libs/emulator").isEmulator
   if not isEmulator then
@@ -117,6 +126,7 @@ return function()
     print("g: Get items")
     --print("c: Craft")
     print("i: Clean incoming")
+    print("k: Kill task")
     print("u: Update")
     print("q: Quit")
     while true do
@@ -127,6 +137,10 @@ return function()
       end
       if ch == "i" then
         cleanIncoming()
+        break
+      end
+      if ch == "k" then
+        killTask()
         break
       end
       if ch == "u" then
