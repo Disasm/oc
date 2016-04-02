@@ -76,7 +76,7 @@ return { run = function()
   logWindow:clear()
   local consoleHeight = math.floor(h * 0.5)
   term.setViewport(w-debugWidth-1, consoleHeight, 0, 0)
-  taskWindow = window.create(1, consoleHeight+2, w-debugWidth-1, h-consoleHeight)
+  taskWindow = window.create(1, consoleHeight+2, w-debugWidth-1, h-consoleHeight-1)
   taskWindow:clear()
 
   for i=1,w-debugWidth do
