@@ -48,7 +48,7 @@ function r.get(id)
     return data_cache[id]
   end
   local v = fser.load(path_from_id(id))
-  if not v then error("No suck item: "..tostring(id), 2) end
+  if not v then error("No such item: "..tostring(id), 2) end
   data_cache[id] = v
   hash_to_id_cache[item_hash(v)] = id
   return v

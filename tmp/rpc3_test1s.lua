@@ -7,7 +7,8 @@ local obj = {
   test4 = {
     test4_1 = "meow",
     test4_2 = function(arg1, arg2) return arg1 + arg2 end
-  }
+  },
+  test9 = function() return 42, 32, 22 end
 }
 
 function obj.test5()

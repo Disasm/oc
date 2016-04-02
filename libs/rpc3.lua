@@ -15,6 +15,7 @@ local default_options = {
 }
 
 local function defaultize_options(options)
+  options = options or {}
   local r = {}
   for key, val in pairs(default_options) do
     r[key] = options[key] or default_options[key]
@@ -35,10 +36,10 @@ local function perform_rpc_request(remote_address, options, payload)
   while true do
     local r = table.pack(event.pull(timeout_per_retry, "modem_message", local_address, remote_address, options.response_port))
     if r.n > 0 then
-      return table.unpack(serialization.unserialize(tostring(r[6])))
+      return r[6], serialization.unserialize(r[7])
     else
       nretry = nretry + 1
-      if nretry > retries then
+      if nretry > options.retries then
         break
       end
       -- resend
@@ -48,13 +49,13 @@ local function perform_rpc_request(remote_address, options, payload)
   return false, "RPC transaction failed"
 end
 
-local function rpc.connect(address, options)
+function rpc.connect(address, options)
   local final_options = defaultize_options(options)
-  modem.open(options.response_port)
+  modem.open(final_options.response_port)
 
-  local make_ping()
+  local function make_ping()
     local val = 1
-    local is_ok, result = perform_rpc_request(address, final_options, { action = "ping", args = { 1 = val } })
+    local is_ok, result = perform_rpc_request(address, final_options, { action = "ping", args = { val } })
     if not is_ok then
       error("Ping failed: "..result)
     end
@@ -66,10 +67,10 @@ local function rpc.connect(address, options)
     end
   end
 
-  local make_call(function_id, args)
-    local is_ok, result = perform_rpc_request(address, final_options, { action = "call", args = args })
+  local function make_call(function_id, args)
+    local is_ok, result = perform_rpc_request(address, final_options, { action = "call", args = args, function_id = function_id })
     if is_ok then
-      return result
+      return table.unpack(result)
     else
       error("Remote error: "..result)
     end
@@ -102,7 +103,7 @@ local function rpc.connect(address, options)
 
 end
 
-local function rpc.bind(obj, options)
+function rpc.bind(obj, options)
   if type(obj) ~= "table" then
     error("rpc.bind supports tables only", 1)
   end
@@ -138,7 +139,7 @@ local function rpc.bind(obj, options)
       return
     end
     local function respond(is_ok, data)
-      modem.send(packet_remote_address, bound_object.__rpc.options.response_port, is_ok, data)
+      modem.send(packet_remote_address, bound_object.__rpc.options.response_port, is_ok, serialization.serialize(data))
     end
     if type(payload) ~= "string" then
       respond(false, string.format("request type is %s (string expected)", type(payload)))
@@ -155,11 +156,17 @@ local function rpc.bind(obj, options)
       respond(true, bound_object)
     elseif request_data.action == "call" then
       local func = bound_functions[request_data.function_id]
-      local is_ok, data = pcall(func, table.unpack(request_data.args))
-      respond(is_ok, serialization.serialize(data))
+      local data = table.pack(pcall(func, table.unpack(request_data.args)))
+      local is_ok = data[1]
+      table.remove(data, 1)
+      data.n = data.n - 1
+      respond(is_ok, data)
     end
   end
   event.listen("modem_message", on_modem_message)
+  if string.len(serialization.serialize(bound_object)) > 4096 then
+    error("Bound object is too large")
+  end
   return true
 end
 

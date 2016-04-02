@@ -112,15 +112,15 @@ function r.run()
     chest.find_paths_to_other_chests()
   end
 
-  local tasks = {}
-  local previous_tasks_serialized = l.inspect(tasks)
+  r.tasks = {}
+  local previous_tasks_serialized = l.inspect(r.tasks)
   function send_tasks_if_changed()
-    local new_tasks_serialized = l.inspect(tasks)
+    local new_tasks_serialized = l.inspect(r.tasks)
     if new_tasks_serialized ~= previous_tasks_serialized then
       previous_tasks_serialized = new_tasks_serialized
       print("Tasks: "..new_tasks_serialized)
       for _, t in ipairs(remote_terminals) do
-        t.set_tasks(tasks)
+        t.set_tasks(r.tasks)
       end
     end
   end
@@ -175,7 +175,7 @@ function r.run()
         l.error("Output task: count is not positive enough.")
         return true
       end
-      return item_storage.load_to_chest(outcoming_chest, task.count, task.item_id, task)
+      return item_storage.load_to_chest(outcoming_chest, true, task)
     else
       l.error("Unknown task")
       return true
@@ -186,22 +186,26 @@ function r.run()
   local tick_interval = 1
   local tick_interval_after_error = 10
 
+  r.add_task = function(task)
+    task.id = next_task_id
+    next_task_id = next_task_id + 1
+    table.insert(r.tasks, task)
+    l.dbg("Task added: "..l.inspect(task))
+    send_tasks_if_changed()
+  end
+
   function tick()
     local is_ok, err = xpcall(function()
       while #pending_commands > 0 do
         local cmd = pending_commands[1]
         table.remove(pending_commands, 1)
         if cmd.action == "add_task" then
-          cmd.task.id = next_task_id
-          next_task_id = next_task_id + 1
-          table.insert(tasks, cmd.task)
-          l.dbg("Task added: "..l.inspect(cmd.task))
-          send_tasks_if_changed()
+          r.add_task(cmd.task)
         elseif cmd.action == "remove_task" then
           local ok = false
-          for i, task in ipairs(tasks) do
+          for i, task in ipairs(r.tasks) do
             if task.id == cmd.task_id then
-              table.remove(tasks, i)
+              table.remove(r.tasks, i)
               l.dbg("Task is removed by user.")
               ok = true
               break
@@ -222,9 +226,9 @@ function r.run()
         end
       end
 
-      table.sort(tasks, function(a,b) return (a.priority or 0) > (b.priority or 0) end)
+      table.sort(r.tasks, function(a,b) return (a.priority or 0) > (b.priority or 0) end)
       local tasks_left = {}
-      for i, task in ipairs(tasks) do
+      for i, task in ipairs(r.tasks) do
         l.dbg("Running task: "..l.inspect(task))
         if process_task(task) then
           l.dbg("Task is completed.")
@@ -232,7 +236,7 @@ function r.run()
           table.insert(tasks_left, task)
         end
       end
-      tasks = tasks_left
+      r.tasks = tasks_left
       send_tasks_if_changed()
       for _, chest in ipairs(r.chests) do
         chest.save_cache()

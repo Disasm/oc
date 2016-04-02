@@ -7,7 +7,6 @@ function pp(text, val)
 end
 
 local x = rpc.connect(hosts.master)
-pp("x", x)
 
 pp("x.test4.test4_2", x.test4.test4_2(2, 4))
 
@@ -18,3 +17,4 @@ pp("tricky7", x.tricky7("a", "b"))
 
 pp("tricky8", x.tricky8("a", "b"))
 
+pp("test9", x.test9())
