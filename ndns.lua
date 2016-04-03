@@ -17,7 +17,9 @@ function get_hostname()
 end
 
 local hostname = get_hostname()
-local hosts = require(hosts_filename)
+local ok, hosts = pcall(require, "hosts")
+if not ok then hosts = {} end
+
 if not hosts then
   hosts = {}
   fser.save(hosts_filename, hosts, true)

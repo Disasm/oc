@@ -2,7 +2,7 @@
 local module_r = {}
 function module_r.create_storage()
   local master = require("craft2/master_main")
-  local craft_task = require("craft2/craft_task")
+  local crafting = require("craft2/crafting")
   local l = master.log
   local r = {}
 
@@ -164,7 +164,7 @@ function module_r.create_storage()
       return true
     end
 
-    if not craft_task.has_recipe(task.item_id) then
+    if not crafting.has_recipe(task.item_id) then
       l.error(string.format("Not enough items. Missing: %d x %d", task.count_left, task.error))
       l.error("Task is discarded.")
       return true

@@ -1,8 +1,10 @@
 local fser = require("libs/file_serialization")
 local filesystem = require("filesystem")
 
+local r = {}
 
-function item_hash(stack)
+
+function r.item_hash(stack)
   return stack.name .. "_" .. stack.label
 end
 
@@ -26,7 +28,6 @@ end
 
 local hash_to_id_cache = {}
 
-local r = {}
 
 function r.hash_to_id(hash)
   if hash_to_id_cache[hash] then
@@ -38,7 +39,7 @@ function r.hash_to_id(hash)
 end
 
 function r.stack_to_id(stack)
-  return r.hash_to_id(item_hash(stack))
+  return r.hash_to_id(r.item_hash(stack))
 end
 
 local data_cache = {}
@@ -50,14 +51,14 @@ function r.get(id)
   local v = fser.load(path_from_id(id))
   if not v then error("No such item: "..tostring(id), 2) end
   data_cache[id] = v
-  hash_to_id_cache[item_hash(v)] = id
+  hash_to_id_cache[r.item_hash(v)] = id
   return v
 end
 
 function r.set(id, data)
   fser.save(path_from_id(id), data)
   data_cache[id] = data
-  local hash = item_hash(data)
+  local hash = r.item_hash(data)
   hash_to_id_cache[hash] = id
   fser.save(path_from_item_hash(hash), id)
   if last_id < id then
