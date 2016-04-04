@@ -21,6 +21,8 @@ local duration = {
 }
 local delay = 3
 
+math.randomseed(os.time())
+
 local old_index = -1
 
 while true do
