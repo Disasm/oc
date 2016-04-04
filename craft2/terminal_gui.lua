@@ -50,6 +50,7 @@ function inputItem()
   local id = nil
   if #ids > 1 then
     print("Select one:");
+  end
     for i = 1,#ids do
       local s = db.get(ids[i])
       local count = counts[ids[i]] or 0
@@ -63,6 +64,7 @@ function inputItem()
       print(i..": "..s.label.." ("..count..")")
       gpu.setForeground(oldFg)
     end
+  if #ids > 1 then
     i = input.getNumber()
     if i == nil then
       return
@@ -78,7 +80,9 @@ function inputItem()
   end
 
   local s = db.get(id)
-  print("Selected: "..s.label)
+  if #ids > 1 then
+    print("Selected: "..s.label)
+  end
 
   print("Enter item count (enter to cancel):")
   local n = input.getNumber()
@@ -106,7 +110,7 @@ function killTask()
   if id == nil then
     return
   end
-  master_enqueue({action="remove_task", task_id=id})
+  master_enqueue({action="remove_task", task_i=id})
 end
 
 return function()
