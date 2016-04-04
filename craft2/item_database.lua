@@ -8,6 +8,14 @@ function r.item_hash(stack)
   return stack.name .. "_" .. stack.label
 end
 
+function r.istack_to_string(istack)
+  if istack[1] > 0 then
+    return string.format("%d x %s", istack[1], r.get(istack[2]).label)
+  else
+    return "empty"
+  end
+end
+
 db_path = require("craft2/paths").item_db
 db_last_id_path = db_path .. "last_id"
 

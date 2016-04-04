@@ -119,6 +119,7 @@ function module_r.create_storage()
 
   function r.load_to_chest(sink_chest, item_id, count)
     -- todo: select closest and fullest chest
+    l.info("test "..l.inspect(count))
     l.dbg(string.format("Loading %d x %d to chest", count, item_id))
     local count_left = count
     for _, chest in ipairs(master.chests) do

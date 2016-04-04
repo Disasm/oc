@@ -8,6 +8,7 @@ local config = require("craft2/config")
 local gpu = require("component").gpu
 local event = require("event")
 local r = {}
+local crafting = require("craft2/crafting")
 
 local remote_databases = {}
 local remote_terminals = {}
@@ -56,13 +57,17 @@ function r.log.dbg(text)
 end
 local l = r.log
 
+function add_stack_to_databases(stack)
+  local new_id = local_item_database.add(stack)
+  for _, d in ipairs(remote_databases) do
+    d.set(new_id, stack)
+  end
+  return new_id
+end
 
 function r.process_istack(istack)
   if istack.unknown_stack then
-    local new_id = local_item_database.add(istack.unknown_stack)
-    for _, d in ipairs(remote_databases) do
-      d.set(new_id, istack.unknown_stack)
-    end
+    local new_id = add_stack_to_databases(istack.unknown_stack)
     return { istack[1], new_id }
   else
     return istack
@@ -72,6 +77,45 @@ end
 
 
 function r.run()
+
+-- TEMPORARY
+local filesystem = require("filesystem")
+local db_fail_count = 0
+local checked_hashes = {}
+
+local function convert_stack(stack)
+  local id = local_item_database.stack_to_id(stack)
+  if not id then
+    error("item not found in database: "..stack.label)
+  end
+  return { stack.size, id }
+end
+
+local success_count = 0
+local input_path = "/home/tmp/recipes"
+for input_file in filesystem.list(input_path) do
+  data = fser.load(input_path.."/"..input_file)
+  if not data then
+    error("file load failed: "..input_file)
+  end
+  recipe = {}
+  recipe.machine = data.machine_type or "craft"
+  recipe.to = { convert_stack(data.to) }
+  recipe.from = {}
+  for i = 1, 9 do
+    if data.from[i] then
+      recipe.from[i] = convert_stack(data.from[i])
+    end
+  end
+  crafting.add_recipe(recipe.to[1][2], recipe)
+end
+
+
+-- END OF TEMPORARY
+
+
+
+
   l.info("Master is starting...")
 
   l.dbg("Loading topology")
@@ -142,7 +186,12 @@ function r.run()
 
 
   function r.on_chest_failure()
-    l.warn("Chest failure! I don't what to do with it yet!")
+    l.warn("Chest failure!")
+    for i, chest in ipairs(r.chests) do
+      l.warn(string.format("Checking chest %d / %d", i, #(r.chests)))
+      chest.rescue_from_chest_error()
+    end
+    l.warn("Done.")
   end
 
   function process_task(task)
@@ -175,7 +224,7 @@ function r.run()
         l.error("Output task: count is not positive enough.")
         return true
       end
-      return item_storage.load_to_chest(outcoming_chest, true, task)
+      return item_storage.process_output_task(outcoming_chest, task)
     else
       l.error("Unknown task")
       return true
