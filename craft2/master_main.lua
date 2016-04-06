@@ -1,4 +1,5 @@
 local fser = require("libs/file_serialization")
+local filesystem = require("filesystem")
 local rpc = require("libs/rpc2")
 local wrap_transposer = require("craft2/wrap_transposer").wrap_transposer
 local wrap_chest = require("craft2/wrap_chest").wrap_chest
@@ -23,6 +24,14 @@ end
 
 r.log = {}
 r.log.inspect = require("serialization").serialize
+local log_file
+if config.write_log then
+  log_file = filesystem.open("/var/log/craft2.log", "a")
+  if not log_file then
+    error("can't open log file")
+  end
+end
+
 function r.log.message(obj)
   if obj.level == "warning" then
     obj.color = 0xffff00
@@ -38,6 +47,9 @@ function r.log.message(obj)
   end
   gpu.setForeground(obj.color)
   print(obj.text)
+  if config.write_log then
+    log_file:write(obj.text.."\n")
+  end
   gpu.setForeground(0xffffff)
   for _, t in ipairs(remote_terminals) do
     t.log_message(obj)
@@ -79,36 +91,7 @@ end
 function r.run()
 
 -- TEMPORARY
-local filesystem = require("filesystem")
-local db_fail_count = 0
-local checked_hashes = {}
 
-local function convert_stack(stack)
-  local id = local_item_database.stack_to_id(stack)
-  if not id then
-    error("item not found in database: "..stack.label)
-  end
-  return { stack.size, id }
-end
-
-local success_count = 0
-local input_path = "/home/tmp/recipes"
-for input_file in filesystem.list(input_path) do
-  data = fser.load(input_path.."/"..input_file)
-  if not data then
-    error("file load failed: "..input_file)
-  end
-  recipe = {}
-  recipe.machine = data.machine_type or "craft"
-  recipe.to = { convert_stack(data.to) }
-  recipe.from = {}
-  for i = 1, 9 do
-    if data.from[i] then
-      recipe.from[i] = convert_stack(data.from[i])
-    end
-  end
-  crafting.add_recipe(recipe.to[1][2], recipe)
-end
 
 
 -- END OF TEMPORARY
@@ -299,6 +282,9 @@ end
     if not is_ok then
       l.error("Error: "..err.message)
       print(err.traceback)
+      if config.write_log then
+        log_file:write(err.traceback.."\n")
+      end
       if not master_is_quitting then
         event.timer(tick_interval_after_error, tick)
       end

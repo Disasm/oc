@@ -39,7 +39,9 @@ return { wrap_chest = function(chest_id, chest_data)
   end
 
   function r.refresh_cache(slot)
-    if not r.content_cache_enabled then return end
+    if not r.content_cache_enabled then
+      return
+    end
     if slot == nil then
       for i = 1, r.slots_count do
         r.get_istack(i, true)
@@ -50,7 +52,10 @@ return { wrap_chest = function(chest_id, chest_data)
     end
   end
   function r.save_cache()
+    -- l.dbg("save cache "..tostring(r.id).." "..tostring(r.content_cache_enabled).." "..tostring(content_cache_modified))
     if r.content_cache_enabled and content_cache_modified then
+      -- l.dbg("save cache ok")
+      l.dbg("save cache "..tostring(r.id))
       fser.save(content_cache_filename, r.content_cache)
       content_cache_modified = false
     end
@@ -106,7 +111,7 @@ return { wrap_chest = function(chest_id, chest_data)
   function r.direct_transfer_to(other_chest, count, source_slot, sink_slot)
     local previous_count = r.get_istack(source_slot)[1]
     local target_count = previous_count - count
-    l.dbg(string.format("direct transfer %d -> %d", r.id, other_chest.id))
+    l.dbg(string.format("direct transfer %d.%d -> %d.%d", r.id, source_slot, other_chest.id, sink_slot))
     if r.id == other_chest.id then
       local t = r.main_transposer
       t.transposer.transfer(t.side, t.side, count, source_slot, sink_slot)
@@ -122,6 +127,7 @@ return { wrap_chest = function(chest_id, chest_data)
     if other_chest.content_cache_enabled then
       other_chest.get_istack(sink_slot, true)
     end
+    l.dbg(string.format("target_count=%d result_count=%d", target_count, r.get_istack(source_slot)[1]))
     return r.get_istack(source_slot)[1] == target_count
   end
 
@@ -131,8 +137,9 @@ return { wrap_chest = function(chest_id, chest_data)
       l.warn("chest.transer_to: invalid count")
       return false
     end
-    local original_source_stack = r.get_istack(source_slot)
-    if original_source_stack[1] == 0 then
+    local item_id = r.get_istack(source_slot)[2]
+    local current_source_count = r.get_istack(source_slot)[1]
+    if current_source_count == 0 then
       l.warn("chest.transer_to: source stack is empty")
       return false
     end
@@ -143,9 +150,12 @@ return { wrap_chest = function(chest_id, chest_data)
     for current_step = 1, (#path-1) do
       local current_chest = master.chests[path[current_step]]
       if current_step + 1 == #path then -- last step
-        local target_count_left = original_source_stack[1] - count
+        local target_count_left = current_source_count - count
         local source_stack = current_chest.get_istack(current_slot)
-        if source_stack[1] ~= original_source_stack[1] or source_stack[2] ~= original_source_stack[2] then
+        l.dbg("source_stack: "..l.inspect(source_stack))
+        -- l.dbg("original_source_stack: "..l.inspect(original_source_stack))
+        l.dbg(string.format("current %d.%d", current_chest.id, current_slot))
+        if source_stack[1] ~= current_source_count or source_stack[2] ~= item_id then
           l.warn("chest.transer_to: stack is lost!")
           master.on_chest_failure()
           return false
@@ -181,12 +191,13 @@ return { wrap_chest = function(chest_id, chest_data)
         local next_chest_id = path[current_step + 1]
         local result = current_chest.direct_transfer_to(master.chests[next_chest_id], count, current_slot, 1)
         if not result then
+          l.warn("chest.transer_to: intermediate transfer failed (probably bad programmer)")
           master.on_chest_failure()
           return false
         end
         current_slot = 1
+        current_source_count = count
       end
-      current_step = current_step + 1
     end
   end
 
@@ -282,7 +293,16 @@ return { wrap_chest = function(chest_id, chest_data)
     r.distances_to_chests = distances
   end
 
-  function r.rescue_from_chest_error()
+  function r.ensure_first_slot_free()
+    if r.content_cache_enabled and r.get_istack(1, true)[1] > 0 then
+      for slot = 3, r.slots_count do
+        if r.get_istack(slot)[1] == 0 then
+          r.direct_transfer_to(r, r.get_istack(1, true)[1], 1, slot)
+          r.get_istack(slot, true)
+          break
+        end
+      end
+    end
     local current_slot = 2
     while r.get_istack(1, true)[1] > 0 do
       current_slot = current_slot + 1
@@ -290,12 +310,20 @@ return { wrap_chest = function(chest_id, chest_data)
         error("Fatal error: chest is full")
       end
       r.direct_transfer_to(r, r.get_istack(1, true)[1], 1, current_slot)
+      if r.content_cache_enabled then
+        r.get_istack(current_slot, true)
+      end
     end
+  end
+
+  function r.rescue_from_chest_error()
+    r.ensure_first_slot_free()
     if r.content_cache_enabled then
       r.refresh_cache()
       r.save_cache()
     end
   end
+  r.ensure_first_slot_free()
 
   return r
 end }
