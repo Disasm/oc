@@ -110,7 +110,7 @@ function module_r.create_storage()
   end
 
   function r.get_item_real_count(item_id)
-    return r.get_stored_item_counts({ item_id })[item_id]
+    return r.get_stored_item_counts({ item_id })[item_id] or 0
   end
 
   function r.get_item_free_count(item_id)
@@ -150,9 +150,9 @@ function module_r.create_storage()
     end
 
     local real_count = r.get_item_real_count(task.item_id)
-    local transfer_count = math.min(task.count, real_count)
+    local transfer_count = math.min(task.count_left, real_count)
     if transfer_count > 0 then
-      local is_ok, msg = r.load_to_chest(sink_chest, task.item_id, task.count)
+      local is_ok, msg = r.load_to_chest(sink_chest, task.item_id, transfer_count)
       if is_ok then
         task.count_left = task.count_left - transfer_count
       else
@@ -166,7 +166,7 @@ function module_r.create_storage()
     end
 
     if not crafting.has_recipe(task.item_id) then
-      l.error(string.format("Not enough items. Missing: %d x %d", task.count_left, task.error))
+      l.error(string.format("Not enough items. Missing: %d x %d", task.count_left, task.item_id))
       l.error("Task is discarded.")
       return true
     end
