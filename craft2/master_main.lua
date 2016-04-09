@@ -10,6 +10,7 @@ local gpu = require("component").gpu
 local event = require("event")
 local r = {}
 local crafting = require("craft2/crafting")
+local computer = require("computer")
 
 local remote_databases = {}
 local remote_terminals = {}
@@ -21,6 +22,8 @@ for _, host in ipairs(config.terminals) do
   table.insert(remote_databases, v.item_database)
   table.insert(remote_terminals, v.terminal)
 end
+
+r.crafter = rpc.connect(hosts[config.crafter], nil, nil, "ping_once").crafter
 
 r.log = {}
 r.log.inspect = require("serialization").serialize
@@ -124,15 +127,19 @@ function r.run()
     table.insert(r.chests, wrap_chest(i, d))
   end
   l.dbg("Calculating final topology...")
-  local outcoming_chest = nil
+
+  r.role_to_chest = {}
+
   for _, chest in ipairs(r.chests) do
-    if chest.role == "output" then
-      if outcoming_chest == nil then
-        outcoming_chest = chest
+    if chest.role ~= "storage" and chest.role ~= "machine_output" then
+      if r.role_to_chest[chest.role] then
+        l.warn(string.format("Multiple chests for role: %s", chest.role))
       else
-        l.warn("Multiple outcoming chests found.")
+        r.role_to_chest[chest.role] = chest
       end
     end
+  end
+  for _, chest in ipairs(r.chests) do
     chest.find_transposers_for_adjacent_chests()
   end
   for _, chest in ipairs(r.chests) do
@@ -140,7 +147,7 @@ function r.run()
   end
 
   r.tasks = {}
-  local previous_tasks_serialized = l.inspect(r.tasks)
+  local previous_tasks_serialized = "INVALID"
   function send_tasks_if_changed()
     local new_tasks_serialized = l.inspect(r.tasks)
     if new_tasks_serialized ~= previous_tasks_serialized then
@@ -155,7 +162,7 @@ function r.run()
   local master_is_quitting = false
   local rpc_interface = {}
   local pending_commands = {}
-  local item_storage = require("craft2/item_storage").create_storage()
+  r.item_storage = require("craft2/item_storage").create_storage()
   function rpc_interface.enqueue_command(cmd)
     if master_is_quitting then
       error("Master is offline.")
@@ -163,7 +170,7 @@ function r.run()
     table.insert(pending_commands, cmd)
   end
   function rpc_interface.get_stored_item_counts(ids)
-    return item_storage.get_stored_item_counts(ids)
+    return r.item_storage.get_stored_item_counts(ids)
   end
   rpc.bind({ master = rpc_interface })
 
@@ -183,7 +190,7 @@ function r.run()
       for _, chest in ipairs(r.chests) do
         if chest.role == "incoming" then
           l.dbg("Processing incoming chest "..chest.id)
-          if not item_storage.load_all_from_chest(chest, task) then
+          if not r.item_storage.load_all_from_chest(chest, task) then
             return false
           end
         end
@@ -191,7 +198,7 @@ function r.run()
       l.dbg("Incoming task completed")
       return true
     elseif task.name == "output" then
-      if not outcoming_chest then
+      if not r.role_to_chest["output"] then
         l.error("Output task: no outcoming chest!")
         return true
       end
@@ -207,7 +214,9 @@ function r.run()
         l.error("Output task: count is not positive enough.")
         return true
       end
-      return item_storage.process_output_task(outcoming_chest, task)
+      return r.item_storage.process_output_task(r.role_to_chest["output"], task)
+    elseif task.name == "craft" then
+      return crafting.craft_one(task)
     else
       l.error("Unknown task")
       return true
@@ -217,6 +226,32 @@ function r.run()
   local next_task_id = 1
   local tick_interval = 1
   local tick_interval_after_error = 10
+
+  local pending_machine_output = {}
+  r.expect_machine_output = function(expectations)
+    local result = {}
+    local all_ok = true
+    for id, count in pairs(expectations) do
+      if pending_machine_output[id] and pending_machine_output[id] > 0 then
+        result[id] = math.min(count, pending_machine_output[id])
+        pending_machine_output[id] = pending_machine_output[id] - result[id]
+      end
+      if not (result[id] and result[id] == count) then
+        all_ok = false
+      end
+    end
+    if all_ok then return true, result end
+    for _, chest in ipairs(r.chests) do
+      if chest.role == "machine_output" then
+        local ok, result = r.item_storage.load_all_from_chest(chest)
+        if not ok then return false end
+        for id, count in pairs(result) do
+          pending_machine_output[id] = (pending_machine_output[id] or 0) + count
+        end
+      end
+    end
+    return true, result
+  end
 
   r.add_task = function(task)
     task.id = next_task_id
@@ -250,6 +285,10 @@ function r.run()
         elseif cmd.action == "quit" then
           master_is_quitting = true
           l.info("Master is now offline.")
+          if cmd.reboot then
+            l.info("Rebooting.")
+            computer.shutdown(true)
+          end
           return
         elseif cmd.action == "throw_error" then
           error("No, it's YOUR fault.")

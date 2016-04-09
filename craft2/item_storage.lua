@@ -38,9 +38,11 @@ function module_r.create_storage()
 
 
   function r.load_all_from_chest(source_chest, task)
+    local loaded_items = {}
+    local allow_slot2 = source_chest.role == "machine_output"
     for i = 1, source_chest.slots_count do
       l.dbg("Processing slot "..i)
-      if i ~= 2 then
+      if i ~= 2 or allow_slot2 then
         l.dbg("test1")
         local stack = source_chest.get_istack(i)
         l.dbg("test2 "..l.inspect(stack))
@@ -72,11 +74,12 @@ function module_r.create_storage()
             l.dbg("fail 2")
             return false
           end
+          loaded_items[stack[2]] = (loaded_items[stack[2]] or 0) + stack[1]
         end
       end
     end
     l.info("Loading items from chest succeeded.")
-    return true
+    return true, loaded_items
   end
 
   function r.get_stored_item_counts(ids)
@@ -99,25 +102,14 @@ function module_r.create_storage()
     return result
   end
 
-  function r.get_item_reserve_count(item_id)
-    local result = 0
-    for _, task in ipairs(master.tasks) do
-      if task.reserve and task.reserve[item_id] then
-        result = result + task.reserve[item_id]
-      end
-    end
-    return result
-  end
-
   function r.get_item_real_count(item_id)
     return r.get_stored_item_counts({ item_id })[item_id] or 0
   end
 
-  function r.get_item_free_count(item_id)
-    return r.get_item_real_count(item_id) - r.get_item_reserve_count(item_id)
-  end
-
-  function r.load_to_chest(sink_chest, item_id, count)
+  function r.load_to_chest(sink_chest, sink_slot, item_id, count)
+    if not sink_chest then
+      error("r.load_to_chest: chest is nil")
+    end
     -- todo: select closest and fullest chest
     l.info("test "..l.inspect(count))
     l.dbg(string.format("Loading %d x %d to chest", count, item_id))
@@ -129,7 +121,7 @@ function module_r.create_storage()
           if item_id == stack[2] then
             local current_count = math.min(count_left, stack[1])
             l.dbg(string.format("Transfering %d items from chest %d", current_count, chest.id))
-            if not chest.transfer_to(sink_chest, current_count, i, nil) then
+            if not chest.transfer_to(sink_chest, current_count, i, sink_slot) then
               return false, "Transfer failed"
             end
             count_left = count_left - current_count
@@ -152,7 +144,7 @@ function module_r.create_storage()
     local real_count = r.get_item_real_count(task.item_id)
     local transfer_count = math.min(task.count_left, real_count)
     if transfer_count > 0 then
-      local is_ok, msg = r.load_to_chest(sink_chest, task.item_id, transfer_count)
+      local is_ok, msg = r.load_to_chest(sink_chest, nil, task.item_id, transfer_count)
       if is_ok then
         task.count_left = task.count_left - transfer_count
       else
@@ -163,32 +155,29 @@ function module_r.create_storage()
     end
     if task.count_left == 0 then
       return true
+    else -- not enough items
+      if crafting.has_recipe(task.item_id) then
+        if not task.craft_requested then
+          task.craft_requested = true
+          l.info(string.format("Requesting craft of %s", item_db.istack_to_string({ task.count_left, task.item_id })))
+          master.add_task({
+            name = "craft",
+            item_id = task.item_id,
+            count = task.count_left,
+            priority = task.priority
+          })
+          task.status = "waiting"
+          task.status_message = "Waiting for crafting"
+        end
+        return false
+      else
+        -- no crafting recipe
+        l.error(string.format("Not enough items. Missing: %s", item_db.istack_to_string({ task.count_left, task.item_id })))
+        l.error("Task is discarded.")
+        return true
+      end
     end
 
-    if not crafting.has_recipe(task.item_id) then
-      l.error(string.format("Not enough items. Missing: %d x %d", task.count_left, task.item_id))
-      l.error("Task is discarded.")
-      return true
-    end
-
-    if task.craft_requested then
-      task.reserve[task.item_id] = task.count_left
-    else
-      task.craft_requested = true
-      local count_requested = task.count_left - r.get_item_free_count(item_id)
-      l.info(string.format("Requesting craft of %d x %d", count_requested, task.item_id))
-      master.add_task({
-        name = "craft",
-        item_id = task.item_id,
-        count = count_requested,
-        priority = task.priority
-      })
-      task.status = "waiting"
-      task.status_message = "Waiting for crafting"
-      task.reserve = {}
-      task.reserve[task.item_id] = task.count_left
-    end
-    return false
   end
 
   return r

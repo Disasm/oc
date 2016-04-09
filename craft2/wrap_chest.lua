@@ -181,10 +181,11 @@ return { wrap_chest = function(chest_id, chest_data)
               if try_final_transfer(i) then return true end
             end
           end
+          l.warn("chest.transer_to: last transfer failed (probably no free slots)")
         else
           if try_final_transfer(sink_slot) then return true end
+          l.warn("chest.transer_to: last transfer failed (slot is probably taken)")
         end
-        l.warn("chest.transer_to: last transfer failed (probably no free slots)")
         master.on_chest_failure()
         return false
       else
