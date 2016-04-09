@@ -28,8 +28,9 @@ local print = function(...)
   end
 end
 
-function inputItem()
+function inputItem(onlyPresent)
   local ids = nil
+  local counts = nil
   while true do
     print("Enter item name (empty to exit):")
     local name = input.getString()
@@ -38,6 +39,21 @@ function inputItem()
     end
 
     ids = db.find_inexact(name)
+
+    counts = master.get_stored_item_counts(ids)
+    if onlyPresent then
+      local i = 1
+      while i <= #ids do
+        local count = counts[ids[i]] or 0
+        if count == 0 then
+          counts[ids[i]] = nil
+          table.remove(ids, i)
+        else
+          i = i + 1
+        end
+      end
+    end
+
     if #ids > 0 then
       break
     end
@@ -45,25 +61,23 @@ function inputItem()
     print("Item not found. Try again.")
   end
 
-  local counts = master.get_stored_item_counts(ids)
-
   local id = nil
   if #ids > 1 then
     print("Select one:");
   end
-    for i = 1,#ids do
-      local s = db.get(ids[i])
-      local count = counts[ids[i]] or 0
+  for i = 1,#ids do
+    local s = db.get(ids[i])
+    local count = counts[ids[i]] or 0
 
-      local oldFg = gpu.getForeground()
-      if count == 0 then
-        gpu.setForeground(0xffff30)
-      else
-        gpu.setForeground(0x30ff30)
-      end
-      print(i..": "..s.label.." ("..count..")")
-      gpu.setForeground(oldFg)
+    local oldFg = gpu.getForeground()
+    if count == 0 then
+      gpu.setForeground(0xffff30)
+    else
+      gpu.setForeground(0x30ff30)
     end
+    print(i..": "..s.label.." ("..count..")")
+    gpu.setForeground(oldFg)
+  end
   if #ids > 1 then
     i = input.getNumber()
     if i == nil then
@@ -84,17 +98,25 @@ function inputItem()
     print("Selected: "..s.label)
   end
 
-  print("Enter item count (enter to cancel):")
-  local n = input.getNumber()
-  if n == nil then
-    return
+  local n = nil
+  while true do
+    print("Enter item count (enter to cancel):")
+    n = input.getNumber()
+    if n == nil then
+      return
+    end
+    if (onlyPresent and n > counts[id]) or (n < 1) then
+      print("Invalid count.")
+    else
+      break
+    end
   end
 
   return id, n, s
 end
 
-function getItemsDialog()
-  local id, n, s = inputItem()
+function getItemsDialog(craftIfNeeded)
+  local id, n, s = inputItem(not craftIfNeeded)
   if id ~= nil then
     master_enqueue({action="add_task", task={name="output", item_id=id, count=n}})
   end
@@ -110,7 +132,7 @@ function killTask()
   if id == nil then
     return
   end
-  master_enqueue({action="remove_task", task_i=id})
+  master_enqueue({action="remove_task", task_id=id})
 end
 
 return function()
@@ -128,15 +150,20 @@ return function()
     print("")
     print("What do you want? Select one.")
     print("g: Get items")
-    --print("c: Craft")
+    print("c: Get items or craft")
     print("i: Clean incoming")
     print("k: Kill task")
     print("u: Update")
+    print("r: Reboot master server");
     print("q: Quit")
     while true do
       local ch = input.getChar()
       if ch == "g" then
-        getItemsDialog()
+        getItemsDialog(false)
+        break
+      end
+      if ch == "c" then
+        getItemsDialog(true)
         break
       end
       if ch == "i" then
@@ -149,6 +176,9 @@ return function()
       end
       if ch == "u" then
         shell.execute("up")
+      end
+      if ch == "r" then
+        master_enqueue({action="quit", reboot=true})
       end
       if ch == "q" then
         return
