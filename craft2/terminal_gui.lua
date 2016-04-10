@@ -29,7 +29,8 @@ local print = function(...)
   end
 end
 
-function inputItem(onlyPresent)
+-- options: onlyPresent, hasCount
+function inputItem(options)
   local ids = nil
   local counts = nil
   while true do
@@ -42,7 +43,7 @@ function inputItem(onlyPresent)
     ids = db.find_inexact(name)
 
     counts = master.get_stored_item_counts(ids)
-    if onlyPresent then
+    if options.onlyPresent then
       local i = 1
       while i <= #ids do
         local count = counts[ids[i]] or 0
@@ -84,16 +85,18 @@ function inputItem(onlyPresent)
   local s = db.get(id)
 
   local n = nil
-  while true do
-    print("Enter item count (enter to cancel):")
-    n = input.getNumber()
-    if n == nil then
-      return
-    end
-    if (onlyPresent and n > counts[id]) or (n < 1) then
-      print("Invalid count.")
-    else
-      break
+  if options.hasCount then
+    while true do
+      print("Enter item count (enter to cancel):")
+      n = input.getNumber()
+      if n == nil then
+        return
+      end
+      if (options.onlyPresent and n > counts[id]) or (n < 1) then
+        print("Invalid count.")
+      else
+        break
+      end
     end
   end
 
@@ -101,7 +104,7 @@ function inputItem(onlyPresent)
 end
 
 function getItemsDialog(craftIfNeeded)
-  local id, n, s = inputItem(not craftIfNeeded)
+  local id, n, s = inputItem({ onlyPresent = not craftIfNeeded, hasCount = true })
   if id ~= nil then
     master_enqueue({action="add_task", task={name="output", item_id=id, count=n}})
   end
@@ -109,6 +112,20 @@ end
 
 function cleanIncoming()
   master_enqueue({action="add_task", task={name="incoming"}})
+end
+
+function viewRecipes()
+  local id, count, stack = inputItem({ onlyPresent = false, hasCount = false })
+  if id then
+    local text = master.get_recipes_string(id)
+    print(string.format("Recipes for %s: \n%s\n", stack.label, text))
+  end
+end
+
+function recipesMenu()
+  input2.show_char_menu("What do you want? Select one.", {
+    { char="v", label="View recipes", fn=viewRecipes },
+  })
 end
 
 function killTask()
@@ -143,7 +160,8 @@ return function()
     { char="i", label="Clean incoming", fn=cleanIncoming },
     { char="k", label="Kill task", fn=killTask },
     { char="u", label="Update", fn=function() shell.execute("up") end },
-    { char="r", label="Reboot master server", fn=function() master_enqueue({action="quit", reboot=true}) end },
+    { char="b", label="Reboot master server", fn=function() master_enqueue({action="quit", reboot=true}) end },
+    { char="r", label="Manage recipes", fn=recipesMenu },
   })
 
 end

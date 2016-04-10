@@ -179,6 +179,16 @@ function r.run()
   function rpc_interface.get_stored_item_counts(ids)
     return r.item_storage.get_stored_item_counts(ids)
   end
+  function rpc_interface.get_craft_machines()
+    return crafting.get_machines()
+  end
+  function rpc_interface.get_recipes_string(item_id)
+    local strings = {}
+    for index, recipe in pairs(crafting.get_recipes(item_id)) do
+      table.insert(strings, string.format("%d. %s", index, crafting.recipe_readable(recipe)))
+    end
+    return table.concat(strings, "\n")
+  end
   rpc.bind({ master = rpc_interface })
 
 

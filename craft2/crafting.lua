@@ -13,6 +13,10 @@ function require_master()
   end
 end
 
+function module_r.get_machines()
+  return {craft=1, Extruder=1, Roller=1, Compressor=1, Furnace=1, Extractor=1, Macerator=1}
+end
+
 
 function module_r.process_task(task)
   require_master()
@@ -56,11 +60,9 @@ function module_r.get_recipes(item_id)
   return data
 end
 
-local known_machines = {craft=1, Extruder=1, Roller=1, Compressor=1, Furnace=1, Extractor=1, Macerator=1}
-
 function module_r.add_recipe(item_id, recipe)
   require_master()
-  if not known_machines[recipe.machine] then
+  if not module_r.get_machines()[recipe.machine] then
     error("unknown machine in recipe")
   end
   local found_good_output = false
