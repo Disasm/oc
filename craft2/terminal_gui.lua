@@ -1,4 +1,5 @@
 local input = require("libcraft/craft_input")
+local input2 = require("craft2/input2")
 local db = require("craft2/item_database")
 local filesystem = require("filesystem")
 local util = require("libs/stack_util")
@@ -61,42 +62,26 @@ function inputItem(onlyPresent)
     print("Item not found. Try again.")
   end
 
-  local id = nil
-  if #ids > 1 then
-    print("Select one:");
-  end
+  local menu_items = {}
   for i = 1,#ids do
-    local s = db.get(ids[i])
-    local count = counts[ids[i]] or 0
-
-    local oldFg = gpu.getForeground()
+    local item = {}
+    item.id = ids[i]
+    local s = db.get(item.id)
+    local count = counts[item.id] or 0
     if count == 0 then
-      gpu.setForeground(0xffff30)
+      item.color = 0xffff30
     else
-      gpu.setForeground(0x30ff30)
+      item.color = 0x30ff30
     end
-    print(i..": "..s.label.." ("..count..")")
-    gpu.setForeground(oldFg)
+    item.label = s.label.." ("..count..")"
+    table.insert(menu_items, item)
   end
-  if #ids > 1 then
-    i = input.getNumber()
-    if i == nil then
-      return
-    end
-
-    if (i < 1) or (i > #ids) then
-      print("Invalid value")
-      return
-    end
-    id = ids[i]
-  else
-    id = ids[1]
+  local _, item = input2.show_number_menu("Select item", menu_items)
+  if item == nil then
+    return
   end
-
+  local id = item.id
   local s = db.get(id)
-  if #ids > 1 then
-    print("Selected: "..s.label)
-  end
 
   local n = nil
   while true do
@@ -142,47 +127,23 @@ return function()
     local hosts = require("hosts")
     local h = rpc.connect(hosts.master)
     master = h.master
-    master_enqueue = h.master.enqueue_command
-  end
-
-  while true do
-    print("")
-    print("")
-    print("What do you want? Select one.")
-    print("g: Get items")
-    print("c: Get items or craft")
-    print("i: Clean incoming")
-    print("k: Kill task")
-    print("u: Update")
-    print("r: Reboot master server");
-    print("q: Quit")
-    while true do
-      local ch = input.getChar()
-      if ch == "g" then
-        getItemsDialog(false)
-        break
+    master_enqueue = function(x)
+      if pcall(h.master.enqueue_command, x) then
+        print("Command added")
+      else
+        print("Master is not responding")
       end
-      if ch == "c" then
-        getItemsDialog(true)
-        break
-      end
-      if ch == "i" then
-        cleanIncoming()
-        break
-      end
-      if ch == "k" then
-        killTask()
-        break
-      end
-      if ch == "u" then
-        shell.execute("up")
-      end
-      if ch == "r" then
-        master_enqueue({action="quit", reboot=true})
-      end
-      if ch == "q" then
-        return
-      end
+      print("")
     end
   end
+
+  input2.show_char_menu("What do you want? Select one.", {
+    { char="g", label="Get items", fn=getItemsDialog },
+    { char="c", label="Get items or craft", fn=function() getItemsDialog(true) end },
+    { char="i", label="Clean incoming", fn=cleanIncoming },
+    { char="k", label="Kill task", fn=killTask },
+    { char="u", label="Update", fn=function() shell.execute("up") end },
+    { char="r", label="Reboot master server", fn=function() master_enqueue({action="quit", reboot=true}) end },
+  })
+
 end
