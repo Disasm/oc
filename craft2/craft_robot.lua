@@ -12,8 +12,10 @@ api = {}
 local slotMap = {1, 2, 3, 5, 6, 7, 9, 10, 11}
 function api.craft(n)
   for i=1,9 do
-    robot.select(slotMap[i])
-    ic.suckFromSlot(sides.down, i + 2)
+    if ic.getStackInSlot(sides.down, i + 2) ~= nil then
+      robot.select(slotMap[i])
+      ic.suckFromSlot(sides.down, i + 2)
+    end
   end
   robot.select(16)
   local r = table.pack(craft(n))
