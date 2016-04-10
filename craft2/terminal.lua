@@ -24,13 +24,19 @@ function updateTaskList(tasks)
     if task.name == "output" then
       name = "Output"
     end
+    if task.name == "craft" then
+      name = "Craft"
+    end
+    if task.name == "craft_one" then
+      name = "Simple craft"
+    end
     if task.status ~= nil then
       if task.status == "error" then
         color = 0xff3030
       end
     end
     local s = task.id..":"..name
-    if task.name == "output" then
+    if (task.name == "output") or (task.name == "craft") or (task.name == "craft_one") then
       local stack = item_database.get(task.item_id)
 
       local count = task.count or 0
