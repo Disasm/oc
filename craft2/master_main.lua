@@ -233,6 +233,8 @@ function r.run()
       end
       return r.item_storage.process_output_task(r.role_to_chest["output"], task)
     elseif task.name == "craft" then
+      return crafting.craft_all(task)
+    elseif task.name == "craft_one" then
       return crafting.craft_one(task)
     else
       l.error("Unknown task")

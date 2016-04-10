@@ -129,7 +129,7 @@ function emulate_craft(istack_check, reservation)
     needed = needed - take
   end
   if needed == 0 then
-    return true, reservation
+    return true, reservation, {}
   end
   istack_check = {needed, id}
 
@@ -141,7 +141,7 @@ function emulate_craft(istack_check, reservation)
     return false, reservation, {}
   end
 
-  for _, recipe in pairs(related_recipes) do
+  for recipe_index, recipe in pairs(related_recipes) do
     local n = 0
     for _, istack in pairs(recipe.to) do
       if istack[2] == istack_check[2] then
@@ -168,25 +168,72 @@ function emulate_craft(istack_check, reservation)
       cloned_reservation = reservation2
       if result == false then
         ok = false
+      else
+        for _,v in pairs(crafts) do
+          current_crafts[#current_crafts+1] = v
+        end
       end
     end
 
+    local craft = {istack_check, recipe_index}
+    table.insert(current_crafts, craft)
+
     if ok then
-      return true, cloned_reservation
+      return true, cloned_reservation, current_crafts
     end
   end
 
   return false, reservation
 end
 
+function merge_crafts(crafts)
+  local map = {}
+  for _, craft in pairs(crafts) do
+    local istack = craft[1]
+    local recipe_index = craft[2]
+    local hash = tostring(istack[2]).."_"..recipe_index
+
+    if map[hash] == nil then
+      map[hash] = craft
+    else
+      map[hash][1][1] = map[hash][1][1] + istack[1]
+    end
+  end
+
+  local r = {}
+  for _, v in pairs(map) do
+    r[#r+1] = v
+  end
+  return r
+end
+
+function module_r.craft_all(task)
+  require_master()
+  local ok, _, crafts = emulate_craft({task.count, task.item_id})
+  if ok then
+    --l.warn("Emulation OK")
+    crafts = merge_crafts(crafts)
+  else
+    --l.warn("Emulation failed")
+    return false
+  end
+
+  for _, craft in pairs(crafts) do
+    local istack = craft[1]
+    local recipe_index = craft[2]
+    master.add_task({
+      name = "craft_one",
+      item_id = istack[2],
+      count = istack[1],
+      priority = task.priority,
+      recipe_index = recipe_index
+    })
+  end
+  return true
+end
+
 function module_r.craft_one(task)
   require_master()
-  local ok = emulate_craft({task.count, task.item_id})
-  if ok then
-    l.warn("Emulation OK")
-  else
-    l.warn("Emulation failed")
-  end
   local item_db = require("craft2/item_database")
   local recipes = module_r.get_recipes(task.item_id)
   local master = require("craft2/master_main")
