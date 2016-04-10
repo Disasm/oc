@@ -1,13 +1,21 @@
 local module_r = {}
 
-local db = require("craft2/item_database")
+local item_db = require("craft2/item_database")
 local paths = require("craft2/paths")
 local fser = require("libs/file_serialization")
+local master = nil
+local l = nil
+
+function require_master()
+  if master == nil then
+    master = require("craft2/master_main")
+    l = master.log
+  end
+end
 
 
 function module_r.process_task(task)
-  local master = require("craft2/master_main")
-  local l = master.log
+  require_master()
 
   l.error("craft task is not implemented yet")
   return false
@@ -24,7 +32,7 @@ function module_r.recipe_hash(recipe)
   local item_strings = {}
   for i = 1, 9 do
     if recipe.from[i] then
-      table.insert(item_strings, string.format("%d: %s", i, db.istack_to_string(recipe.from[i])))
+      table.insert(item_strings, string.format("%d: %s", i, item_db.istack_to_string(recipe.from[i])))
     end
   end
   local from_string = table.concat(item_strings, ", ")
@@ -34,7 +42,7 @@ end
 function module_r.recipe_readable(recipe)
   local item_strings = {}
   for _, stack in ipairs(recipe.to) do
-    table.insert(item_strings, db.istack_to_string(stack))
+    table.insert(item_strings, item_db.istack_to_string(stack))
   end
   local to_string = table.concat(item_strings, ", ")
   return string.format("%s -> %s", module_r.recipe_hash(recipe), to_string)
@@ -51,7 +59,7 @@ end
 local known_machines = {craft=1, Extruder=1, Roller=1, Compressor=1, Furnace=1, Extractor=1, Macerator=1}
 
 function module_r.add_recipe(item_id, recipe)
-  local l = require("craft2/master_main").log
+  require_master()
   if not known_machines[recipe.machine] then
     error("unknown machine in recipe")
   end
@@ -73,12 +81,110 @@ function module_r.add_recipe(item_id, recipe)
     end
   end
   table.insert(data, recipe)
-  l.info(string.format("New recipe added for %s:", db.get(item_id).label))
+  l.info(string.format("New recipe added for %s:", item_db.get(item_id).label))
   l.info(module_r.recipe_readable(recipe))
   fser.save(paths.recipes(item_id), data)
 end
 
+function count_items(ids, reservation)
+  require_master()
+
+  local counts = master.item_storage.get_stored_item_counts(ids)
+  for _, id in pairs(ids) do
+    local r = reservation[id] or 0
+    counts[id] = (counts[id] or 0) - r
+    if counts[id] < 0 then
+      counts[id] = 0
+    end
+  end
+  return counts
+end
+
+function clone_reservation(reservation)
+  local cloned = {}
+  for k, v in pairs(reservation) do
+    cloned[k] = v
+  end
+  return cloned
+end
+
+function emulate_craft(istack_check, reservation)
+  require_master()
+
+  if reservation == nil then
+    reservation = {}
+  else
+    reservation = clone_reservation(reservation)
+  end
+
+  -- check for available items
+  local id = istack_check[2]
+  local needed = istack_check[1]
+  local counts = count_items({id}, reservation)
+  if counts[id] > 0 then
+    local take = math.min(counts[id], needed)
+    reservation[id] = (reservation[id] or 0) + take
+    needed = needed - take
+  end
+  if needed == 0 then
+    return true, reservation
+  end
+  istack_check = {needed, id}
+
+  -- find related craft recipes
+  local related_recipes = module_r.get_recipes(id)
+
+  if #related_recipes == 0 then
+    l.error(string.format("Missing items: %s", item_db.istack_to_string(istack_check)))
+    return false, reservation, {}
+  end
+
+  for _, recipe in pairs(related_recipes) do
+    local n = 0
+    for _, istack in pairs(recipe.to) do
+      if istack[2] == istack_check[2] then
+        n = n + istack[1]
+      end
+    end
+    n = math.ceil(istack_check[1] / n)
+
+    local items_from = {}
+    for _, istack in pairs(recipe.from) do
+      items_from[istack[2]] = (items_from[istack[2]] or 0) + n * istack[1]
+    end
+
+    local ids = {}
+    for id, _ in pairs(items_from) do
+      ids[#ids+1] = id
+    end
+
+    local cloned_reservation = clone_reservation(reservation)
+    local current_crafts = {}
+    local ok = true
+    for id, needed in pairs(items_from) do
+      local result, reservation2, crafts = emulate_craft({needed, id}, cloned_reservation)
+      cloned_reservation = reservation2
+      if result == false then
+        ok = false
+      end
+    end
+
+    if ok then
+      return true, cloned_reservation
+    end
+  end
+
+  return false, reservation
+end
+
 function module_r.craft_one(task)
+  require_master()
+  local ok = emulate_craft({task.count, task.item_id})
+  if ok then
+    l.warn("Emulation OK")
+  else
+    l.warn("Emulation failed")
+  end
   local item_db = require("craft2/item_database")
   local recipes = module_r.get_recipes(task.item_id)
   local master = require("craft2/master_main")
