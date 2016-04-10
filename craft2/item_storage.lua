@@ -174,6 +174,7 @@ function module_r.create_storage()
         -- no crafting recipe
         l.error(string.format("Not enough items. Missing: %s", item_db.istack_to_string({ task.count_left, task.item_id })))
         l.error("Task is discarded.")
+        master.notify(false)
         return true
       end
     end

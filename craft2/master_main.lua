@@ -11,6 +11,7 @@ local event = require("event")
 local r = {}
 local crafting = require("craft2/crafting")
 local computer = require("computer")
+local notifications = require("craft2/notifications")
 
 local remote_databases = {}
 local remote_terminals = {}
@@ -24,7 +25,13 @@ for _, host in ipairs(config.terminals) do
 end
 
 r.crafter = rpc.connect(hosts[config.crafter], nil, nil, "ping_once").crafter
-
+r.notify = function(ok)
+  if ok then
+    notifications.play_major_chord(1, 0.2)
+  else
+    notifications.play_minor_chord(1, 0.2)
+  end
+end
 r.log = {}
 r.log.inspect = require("serialization").serialize
 local log_file
@@ -267,6 +274,7 @@ function r.run()
         local cmd = pending_commands[1]
         table.remove(pending_commands, 1)
         if cmd.action == "add_task" then
+          cmd.task.from_terminal = true
           r.add_task(cmd.task)
         elseif cmd.action == "remove_task" then
           local ok = false
@@ -303,6 +311,9 @@ function r.run()
         l.dbg("Running task: "..l.inspect(task))
         if process_task(task) then
           l.dbg("Task is completed.")
+          if task.from_terminal then
+            r.notify(true)
+          end
         else
           table.insert(tasks_left, task)
         end
@@ -331,6 +342,7 @@ function r.run()
   end
   event.timer(tick_interval, tick)
   l.info("Master is now live.")
+  r.notify(true)
 
 end
 return r
