@@ -191,7 +191,6 @@ function r.run()
   end
   function rpc_interface.remove_recipe(item_id, recipe_index)
     crafting.remove_recipe(item_id, recipe_index)
-    return rpc_interface.get_recipes_strings(item_id)
   end
   rpc.bind({ master = rpc_interface })
 
