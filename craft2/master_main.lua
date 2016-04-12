@@ -195,13 +195,15 @@ function r.run()
   rpc.bind({ master = rpc_interface })
 
 
-  function r.on_chest_failure()
+  function r.on_chest_failure(chest1, chest2)
     l.warn("Chest failure!")
-    for i, chest in ipairs(r.chests) do
-      l.warn(string.format("Checking chest %d / %d", i, #(r.chests)))
-      chest.rescue_from_chest_error()
+    if chest1 then
+      chest1.rescue_from_chest_error()
     end
-    l.warn("Done.")
+    if chest2 then
+      chest2.rescue_from_chest_error()
+    end
+    l.warn("Let's hope it's all right now.")
   end
 
   function process_task(task)

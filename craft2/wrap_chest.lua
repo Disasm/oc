@@ -157,7 +157,7 @@ return { wrap_chest = function(chest_id, chest_data)
         l.dbg(string.format("current %d.%d", current_chest.id, current_slot))
         if source_stack[1] ~= current_source_count or source_stack[2] ~= item_id then
           l.warn("chest.transer_to: stack is lost!")
-          master.on_chest_failure()
+          master.on_chest_failure(current_chest)
           return false
         end
         local function try_final_transfer(slot)
@@ -186,14 +186,17 @@ return { wrap_chest = function(chest_id, chest_data)
           if try_final_transfer(sink_slot) then return true end
           l.warn("chest.transer_to: last transfer failed (slot is probably taken)")
         end
-        master.on_chest_failure()
+        master.on_chest_failure(current_chest, other_chest)
         return false
       else
         local next_chest_id = path[current_step + 1]
-        local result = current_chest.direct_transfer_to(master.chests[next_chest_id], count, current_slot, 1)
+        local sink_chest = master.chests[next_chest_id]
+        local result = current_chest.direct_transfer_to(sink_chest, count, current_slot, 1)
         if not result then
-          l.warn("chest.transer_to: intermediate transfer failed (probably bad programmer)")
-          master.on_chest_failure()
+          l.warn("chest.transer_to: intermediate transfer failed")
+          l.warn(string.format("from: %d.%d", current_chest.id, current_slot))
+          l.warn(string.format("to: %d.%d", sink_chest.id, 1))
+          master.on_chest_failure(current_chest, sink_chest)
           return false
         end
         current_slot = 1
