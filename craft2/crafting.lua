@@ -91,6 +91,12 @@ function module_r.add_recipe(item_id, recipe)
   fser.save(paths.recipes(item_id), data)
 end
 
+function module_r.remove_recipe(item_id, recipe_index)
+  local data = module_r.get_recipes(item_id)
+  table.remove(data, recipe_index)
+  fser.save(paths.recipes(item_id), data)
+end
+
 function count_items(ids, reservation)
   require_master()
 

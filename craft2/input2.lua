@@ -15,10 +15,12 @@ input2.color_print = function(text, color)
   end
 end
 
-input2.show_char_menu = function(label, actions)
-  table.insert(actions, { char="q", label="Quit", fn=function() return true end })
+input2.show_char_menu = function(label, actions, config)
+  if not (config and config.no_quit) then
+    table.insert(actions, { char="q", label="Quit", fn=function() return true end })
+  end
   while true do
-    print(label)
+    if label then print(label) end
     for _, action in pairs(actions) do
       input2.color_print(string.format("%s: %s", action.char, action.label), action.color)
     end
@@ -67,6 +69,14 @@ input2.show_number_menu = function(label, actions)
       return i, action
     end
   end
+end
+
+input2.confirm = function(label, callback)
+  input2.show_char_menu(label, {
+    { char="y", label="Yes", fn=function() callback(); return true end },
+    { char="n", label="No", fn=function() return true end },
+  })
+
 end
 
 return input2

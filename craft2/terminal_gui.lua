@@ -116,15 +116,48 @@ end
 
 function viewRecipes()
   local id, count, stack = inputItem({ onlyPresent = false, hasCount = false })
-  if id then
-    local text = master.get_recipes_string(id)
-    print(string.format("Recipes for %s: \n%s\n", stack.label, text))
+  if not id then return end
+
+  local function main()
+    local strings = master.get_recipes_strings(id)
+    if #strings > 0 then
+      print(string.format("Recipes for %s: \n", stack.label))
+      for index, str in pairs(strings) do
+        print(string.format("%d. %s", index, str))
+      end
+      function removeRecipe()
+        print("Enter recipe index (enter to cancel):")
+        local n = input.getNumber()
+        if n == nil then
+          return
+        end
+        print(string.format("Are you sure you want to delete this recipe?"))
+        print(strings[n])
+        input2.confirm(nil, function()
+          master.remove_recipe(id, n)
+          main()
+        end)
+      end
+      input2.show_char_menu(nil, {
+        { char="r", label="Remove recipe", fn=removeRecipe },
+      })
+    else
+      print(string.format("No recipes for %s.", stack.label))
+    end
+
   end
+  main()
+
+end
+
+function addRecipe()
+
 end
 
 function recipesMenu()
   input2.show_char_menu("What do you want? Select one.", {
     { char="v", label="View recipes", fn=viewRecipes },
+    { char="a", label="Add recipe", fn=addRecipe },
   })
 end
 
