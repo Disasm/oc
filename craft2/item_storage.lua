@@ -7,9 +7,6 @@ function module_r.create_storage()
   local r = {}
 
   local item_db = require("craft2/item_database")
-  local function max_stack(item_id)
-    return item_db.get(item_id).maxStackSize
-  end
 
   local function score_for_adding_items(stack, source_chest, sink_chest)
     local distance = source_chest.distances_to_chests[sink_chest.id]
@@ -78,7 +75,7 @@ function module_r.create_storage()
         end
       end
     end
-    l.info("Loading items from chest succeeded.")
+    l.dbg("Loading items from chest succeeded.")
     return true, loaded_items
   end
 
@@ -111,7 +108,6 @@ function module_r.create_storage()
       error("r.load_to_chest: chest is nil")
     end
     -- todo: select closest and fullest chest
-    l.info("test "..l.inspect(count))
     l.dbg(string.format("Loading %d x %d to chest", count, item_id))
     local count_left = count
     for _, chest in ipairs(master.chests) do
@@ -126,7 +122,7 @@ function module_r.create_storage()
             end
             count_left = count_left - current_count
             if count_left == 0 then
-              l.info("Loading items into chest succeeded.")
+              l.dbg("Loading items into chest succeeded.")
               return true
             end
           end
