@@ -138,7 +138,7 @@ function viewRecipes()
           main()
         end)
       end
-      input2.show_char_menu(nil, {
+      input2.show_char_menu("Recipe actions", {
         { char="r", label="Remove recipe", fn=removeRecipe },
       })
     else
@@ -150,12 +150,120 @@ function viewRecipes()
 
 end
 
-function addRecipe()
 
+string_lpad = function(str, len, char)
+  if char == nil then char = ' ' end
+  if string.len(str) > len then
+    str = string.sub(str, 0, len)
+  end
+  return str .. string.rep(char, len - #str)
+end
+
+function addRecipe()
+  local machines = {}
+  for name, _ in pairs(master.get_craft_machines()) do
+    table.insert(machines, { label = name })
+  end
+  local _, action = input2.show_number_menu("Select machine", machines)
+  local machine = action.label
+  local is_craft = (machine == "craft")
+  local stacks = {}
+  local function printStacks()
+    print("")
+    if is_craft then
+      for i = 1, 9 do
+        local s = ""
+        if stacks[i] then
+          s = db.istack_to_string(stacks[i])
+        end
+        io.write(string_lpad(string.format("[%d] %s", i, s), 20))
+        if i % 3 == 0 then
+          io.write("\n")
+        end
+      end
+    else
+      local any = false
+      for i, stack in pairs(stacks) do
+        print(string.format("[%d] %s", i, db.istack_to_string(stack)))
+        any = true
+      end
+      if not any then
+        print("No stack input yet.")
+      end
+    end
+    print("")
+  end
+  printStacks()
+  local function add()
+    local item_id, count = inputItem({ hasCount = true })
+    if not item_id then return end
+    if is_craft then
+      while true do
+        printStacks()
+        print("Enter crafting slot (enter to cancel):")
+        local n = input.getNumber()
+        if n == nil then
+          printStacks()
+          return
+        end
+        if n < 1 or n > 9 then
+          print("Invalid crafting slot.")
+        else
+          stacks[n] = { count, item_id }
+          print("Added.")
+        end
+      end
+    else
+      local n = 1
+      while stacks[n] do
+        n = n + 1
+      end
+      stacks[n] = { count, item_id }
+      print("Added.")
+      printStacks()
+    end
+  end
+
+  local function rem()
+    print("Enter crafting slot (enter to cancel):")
+    local n = input.getNumber()
+    if n then
+      if is_craft then
+        stacks[n] = nil
+      else
+        table.remove(stacks, n)
+      end
+    end
+    printStacks()
+  end
+  local function commit(ok)
+    master_enqueue({ action="commit_recipe", accept=ok })
+  end
+  local function save()
+    master_enqueue({
+      action="add_task",
+      task={
+        name="craft_incomplete",
+        recipe={
+          machine=machine,
+          from=stacks
+        }
+      }
+    })
+    input2.show_char_menu("Wait for the output!", {
+      { char="a", label="Accept recipe", fn=function() commit(true); return true end  },
+      { char="d", label="Discard recipe", fn=function() commit(false); return true end  },
+    }, { no_quit=true })
+  end
+  input2.show_char_menu("Recipe editor", {
+    { char="a", label="Add item", fn=add },
+    { char="r", label="Remove item", fn=rem },
+    { char="s", label="Save", fn=save },
+  })
 end
 
 function recipesMenu()
-  input2.show_char_menu("What do you want? Select one.", {
+  input2.show_char_menu("Recipes", {
     { char="v", label="View recipes", fn=viewRecipes },
     { char="a", label="Add recipe", fn=addRecipe },
   })
@@ -187,7 +295,7 @@ return function()
     end
   end
 
-  input2.show_char_menu("What do you want? Select one.", {
+  input2.show_char_menu("Main menu", {
     { char="g", label="Get items", fn=getItemsDialog },
     { char="c", label="Get items or craft", fn=function() getItemsDialog(true) end },
     { char="i", label="Clean incoming", fn=cleanIncoming },

@@ -241,6 +241,8 @@ function r.run()
       return crafting.craft_all(task)
     elseif task.name == "craft_one" then
       return crafting.craft_one(task)
+    elseif task.name == "craft_incomplete" then
+      return crafting.craft_incomplete_recipe(task)
     else
       l.error("Unknown task")
       return true
@@ -255,16 +257,18 @@ function r.run()
   r.expect_machine_output = function(expectations)
     local result = {}
     local all_ok = true
-    for id, count in pairs(expectations) do
-      if pending_machine_output[id] and pending_machine_output[id] > 0 then
-        result[id] = math.min(count, pending_machine_output[id])
-        pending_machine_output[id] = pending_machine_output[id] - result[id]
-      end
-      if not (result[id] and result[id] == count) then
-        all_ok = false
+    if expectations then
+      for id, count in pairs(expectations) do
+        if pending_machine_output[id] and pending_machine_output[id] > 0 then
+          result[id] = math.min(count, pending_machine_output[id])
+          pending_machine_output[id] = pending_machine_output[id] - result[id]
+        end
+        if not (result[id] and result[id] == count) then
+          all_ok = false
+        end
       end
     end
-    if all_ok then return true, result end
+    if all_ok and expectations then return true, result end
     for _, chest in ipairs(r.chests) do
       if chest.role == "machine_output" then
         local ok, result = r.item_storage.load_all_from_chest(chest)
@@ -274,8 +278,15 @@ function r.run()
         end
       end
     end
+    if not expectations then
+      for id, count in pairs(pending_machine_output) do
+        result[id] = count
+        pending_machine_output[id] = 0
+      end
+    end
     return true, result
   end
+  r.expect_machine_output() -- clean on startup
 
   r.add_task = function(task)
     task.id = next_task_id
@@ -307,6 +318,35 @@ function r.run()
             l.error("Cannot remove task: task not found.")
           end
           send_tasks_if_changed()
+        elseif cmd.action == "commit_recipe" then
+          for i, task in ipairs(r.tasks) do
+            if task.name == "craft_incomplete" then
+              if cmd.accept then
+                local recipe = task.recipe
+                recipe.to = {}
+                local any = false
+                for id, count in pairs(task.output) do
+                  if count > 0 then
+                    table.insert(recipe.to, {count, id})
+                    any = true
+                  end
+                end
+                if any then
+                  for id, count in pairs(task.output) do
+                    if count > 0 then
+                      crafting.add_recipe(id, recipe)
+                    end
+                  end
+                else
+                  l.error("Recipe has no output.")
+                end
+              else
+                l.info("Recipe is discarded.")
+              end
+              table.remove(r.tasks, i)
+              break
+            end
+          end
         elseif cmd.action == "quit" then
           master_is_quitting = true
           l.info("Master is now offline.")

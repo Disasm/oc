@@ -241,6 +241,91 @@ function module_r.craft_all(task)
   return true
 end
 
+function load_items_into_machine(recipe, count, task)
+
+  local one_craft_output = 0
+  local total_use_count = 0
+  if recipe.to then
+    for _, istack in pairs(recipe.to) do
+      if istack[2] == task.item_id then
+        one_craft_output = one_craft_output + istack[1]
+      end
+    end
+    total_use_count = math.ceil(count / one_craft_output)
+  else
+    one_craft_output = 1
+    total_use_count = 1
+  end
+
+
+  local ids = {}
+  local required_counts = {}
+  for _, istack in pairs(recipe.from) do
+    table.insert(ids, istack[2])
+    required_counts[istack[2]] = (required_counts[istack[2]] or 0) + istack[1] * total_use_count
+  end
+  local counts = master.item_storage.get_stored_item_counts(ids)
+  for _, id in pairs(ids) do
+    if not counts[id] or counts[id] < required_counts[id] then
+      local missing_stack = { required_counts[id] - (counts[id] or 0), id }
+      l.error(string.format("Missing required item: %s", item_db.istack_to_string(missing_stack)))
+      task.status = "error"
+      task.status_message = "Missing items"
+      return false
+    end
+  end
+
+  if recipe.machine == "craft" then
+    if not master.item_storage.load_all_from_chest(master.role_to_chest["craft"], task) then
+      return false
+    end
+    local max_crafts_per_use = total_use_count
+    local function check_max_craft(stack)
+      l.info("stack: " .. l.inspect(stack))
+      l.info("db data: " .. l.inspect(item_db.get(stack[2])))
+      local stack_max_crafts = math.floor(max_stack(stack[2]) / stack[1])
+      if max_crafts_per_use > stack_max_crafts then
+        max_crafts_per_use = stack_max_crafts
+      end
+    end
+    for _, stack in pairs(recipe.from) do
+      check_max_craft(stack)
+    end
+    if recipe.to then
+      for i, stack in pairs(recipe.to) do
+        check_max_craft(stack)
+      end
+    end
+    local use_count_left = total_use_count
+    while use_count_left > 0 do
+      local current_use_count = math.min(use_count_left, max_crafts_per_use)
+      for i, stack in pairs(recipe.from) do
+        if not master.item_storage.load_to_chest(master.role_to_chest["craft"], i + 2, stack[2], stack[1] * current_use_count) then
+          l.error("storage.load_to_chest unexpectedly failed")
+          task.status = "error"
+          task.status_message = "Unexpected error"
+          return false
+        end
+      end
+      master.crafter.craft(one_craft_output * current_use_count)
+      use_count_left = use_count_left - current_use_count
+    end
+  else
+    for _, istack in pairs(recipe.from) do
+      if not master.item_storage.load_to_chest(master.role_to_chest[recipe.machine], nil, istack[2], istack[1] * total_use_count) then
+        l.error("storage.load_to_chest unexpectedly failed")
+        task.status = "error"
+        task.status_message = "Unexpected error"
+        return false
+      end
+    end
+  end
+  task.status = "waiting"
+  task.status_message = "Waiting for output"
+  task.prepared = true
+  task.expected_count = task.count
+end
+
 function module_r.craft_one(task)
   require_master()
   local item_db = require("craft2/item_database")
@@ -267,80 +352,49 @@ function module_r.craft_one(task)
     local recipe_errors = {}
     local recipe = recipes[task.recipe_index]
 
-    local one_craft_output = 0
-    for _, istack in pairs(recipe.to) do
-      if istack[2] == task.item_id then
-        one_craft_output = one_craft_output + istack[1]
-      end
-    end
-    local total_use_count = math.ceil(task.count / one_craft_output)
-
-    local ids = {}
-    local required_counts = {}
-    for _, istack in pairs(recipe.from) do
-      table.insert(ids, istack[2])
-      required_counts[istack[2]] = (required_counts[istack[2]] or 0) + istack[1] * total_use_count
-    end
-    local counts = master.item_storage.get_stored_item_counts(ids)
-    for _, id in pairs(ids) do
-      if not counts[id] or counts[id] < required_counts[id] then
-        local missing_stack = { required_counts[id] - (counts[id] or 0), id }
-        l.error(string.format("Missing required item: %s", item_db.istack_to_string(missing_stack)))
-        task.status = "error"
-        task.status_message = "Missing items"
-        return false
-      end
-    end
-
-    if recipe.machine == "craft" then
-      if not master.item_storage.load_all_from_chest(master.role_to_chest["craft"], task) then
-        return false
-      end
-      local max_crafts_per_use = total_use_count
-      local function check_max_craft(stack)
-        l.info("stack: " .. l.inspect(stack))
-        l.info("db data: " .. l.inspect(item_db.get(stack[2])))
-        local stack_max_crafts = math.floor(max_stack(stack[2]) / stack[1])
-        if max_crafts_per_use > stack_max_crafts then
-          max_crafts_per_use = stack_max_crafts
-        end
-      end
-      for _, stack in pairs(recipe.from) do
-        check_max_craft(stack)
-      end
-      for i, stack in pairs(recipe.to) do
-        check_max_craft(stack)
-      end
-      local use_count_left = total_use_count
-      while use_count_left > 0 do
-        local current_use_count = math.min(use_count_left, max_crafts_per_use)
-        for i, stack in pairs(recipe.from) do
-          if not master.item_storage.load_to_chest(master.role_to_chest["craft"], i + 2, stack[2], stack[1] * current_use_count) then
-            l.error("storage.load_to_chest unexpectedly failed")
-            task.status = "error"
-            task.status_message = "Unexpected error"
-            return false
-          end
-        end
-        master.crafter.craft(one_craft_output * current_use_count)
-        use_count_left = use_count_left - current_use_count
-      end
-    else
-      for _, istack in pairs(recipe.from) do
-        if not master.item_storage.load_to_chest(master.role_to_chest[recipe.machine], nil, istack[2], istack[1] * total_use_count) then
-          l.error("storage.load_to_chest unexpectedly failed")
-          task.status = "error"
-          task.status_message = "Unexpected error"
-          return false
-        end
-      end
-    end
-    task.status = "waiting"
-    task.status_message = "Waiting for output"
-    task.prepared = true
-    task.expected_count = task.count
+    load_items_into_machine(recipe, task.count, task)
     return false
   end
 end
+
+function module_r.craft_incomplete_recipe(task)
+  require_master()
+  local item_db = require("craft2/item_database")
+  local master = require("craft2/master_main")
+  local l = master.log
+  if task.prepared then
+    local ok, result = master.expect_machine_output(nil)
+    if result then
+      local any = false
+      for id, count in pairs(result) do
+        task.output[id] = (task.output[id] or 0) + count
+        if count > 0 then
+          any = true
+        end
+      end
+      if any then
+        l.info("")
+        l.info("Current craft output:")
+        for id, count in pairs(task.output) do
+          l.info(item_db.istack_to_string({ count, id }))
+        end
+        l.info("")
+      end
+    end
+  else
+    l.info(string.format("Crafting with new recipe"))
+    local ok, result = master.expect_machine_output(nil)
+    for id, count in pairs(result) do
+      if count > 0 then
+        l.warn("Bad news: machine output was not empty.")
+      end
+    end
+    load_items_into_machine(task.recipe, 1, task)
+    task.output = {}
+    return false
+  end
+end
+
+
 
 return module_r

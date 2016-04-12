@@ -66,7 +66,7 @@ return { run = function()
     end
   end
   if not probe_location then
-    error("No probe found. Place 1 stick in 2nd slot of incoming chest.")
+    error("No probe found. Place 64 sticks in 2nd slot of incoming chest.")
   end
   print("Running probe cycle...")
   local chests = {}
