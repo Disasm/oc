@@ -1,6 +1,6 @@
 local component = require("component")
 
-local item_database = require("craft2/item_database")
+local item_db = require("craft2/item_db")()
 
 local r = {}
 function r.get_transposers()
@@ -29,7 +29,7 @@ function r.get_istack(transposer, side, slot)
   local result = r.get_stack(transposer, side, slot)
   if result then 
     -- filter dangerous fields like "tag"
-    local id = item_database.stack_to_id(result)
+    local id = item_db.stack_to_id(result)
     if id then 
       return { result.size, id }
     else 

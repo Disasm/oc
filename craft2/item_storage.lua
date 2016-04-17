@@ -1,12 +1,14 @@
+local module_cache
+return function()
+  if module_cache then return module_cache end
+  local item_storage = {}
+  module_cache = item_storage
 
-local module_r = {}
-function module_r.create_storage()
-  local master = require("craft2/master_main")
-  local crafting = require("craft2/crafting")
+  local master = require("craft2/master")()
+  local crafting = require("craft2/crafting")()
   local l = master.log
-  local r = {}
 
-  local item_db = require("craft2/item_database")
+  local item_db = require("craft2/item_db")()
 
   local function score_for_adding_items(stack, source_chest, sink_chest)
     local distance = source_chest.distances_to_chests[sink_chest.id]
@@ -34,7 +36,7 @@ function module_r.create_storage()
   end
 
 
-  function r.load_all_from_chest(source_chest, task)
+  function item_storage.load_all_from_chest(source_chest, task)
     local loaded_items = {}
     local allow_slot2 = source_chest.role == "machine_output"
     for i = 1, source_chest.slots_count do
@@ -46,7 +48,7 @@ function module_r.create_storage()
         if stack[1] > 0 then
           l.dbg("stack[1] > 0")
           local max_score = -1
-          local max_score_chest = nil
+          local max_score_chest
           for j, sink_chest in ipairs(master.chests) do
             l.dbg("iterating: chest "..j)
             if sink_chest.role == "storage" then
@@ -79,7 +81,7 @@ function module_r.create_storage()
     return true, loaded_items
   end
 
-  function r.get_stored_item_counts(ids)
+  function item_storage.get_stored_item_counts(ids)
     local ids_as_keys = {}
     for _, id in ipairs(ids) do
       ids_as_keys[id] = true
@@ -99,11 +101,11 @@ function module_r.create_storage()
     return result
   end
 
-  function r.get_item_real_count(item_id)
-    return r.get_stored_item_counts({ item_id })[item_id] or 0
+  function item_storage.get_item_real_count(item_id)
+    return item_storage.get_stored_item_counts({ item_id })[item_id] or 0
   end
 
-  function r.load_to_chest(sink_chest, sink_slot, item_id, count)
+  function item_storage.load_to_chest(sink_chest, sink_slot, item_id, count)
     if not sink_chest then
       error("r.load_to_chest: chest is nil")
     end
@@ -132,15 +134,15 @@ function module_r.create_storage()
     return false, "Not enough items"
   end
 
-  function r.process_output_task(sink_chest, task)
+  function item_storage.process_output_task(sink_chest, task)
     if task.count_left == nil then
       task.count_left = task.count
     end
 
-    local real_count = r.get_item_real_count(task.item_id)
+    local real_count = item_storage.get_item_real_count(task.item_id)
     local transfer_count = math.min(task.count_left, real_count)
     if transfer_count > 0 then
-      local is_ok, msg = r.load_to_chest(sink_chest, nil, task.item_id, transfer_count)
+      local is_ok, msg = item_storage.load_to_chest(sink_chest, nil, task.item_id, transfer_count)
       if is_ok then
         task.count_left = task.count_left - transfer_count
       else
@@ -177,6 +179,5 @@ function module_r.create_storage()
 
   end
 
-  return r
+  return item_storage
 end
-return module_r

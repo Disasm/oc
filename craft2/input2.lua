@@ -65,18 +65,18 @@ input2.show_number_menu = function(label, actions)
     for i, action in pairs(actions) do
       input2.color_print(string.format("%d. %s", i, action.label), action.color)
     end
-    i = input.getNumber()
-    if i == nil then
+    local index = input.getNumber()
+    if index == nil then
       return nil
     end
-    if (i < 1) or (i > #actions) then
+    if (index < 1) or (index > #actions) then
       print("Invalid value")
     else
       print("")
-      local action = actions[i]
-      input2.color_print(string.format("[ %d. %s ]", i, action.label), action.color)
+      local action = actions[index]
+      input2.color_print(string.format("[ %d. %s ]", index, action.label), action.color)
       print("")
-      return i, action
+      return index, action
     end
   end
 end

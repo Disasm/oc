@@ -1,4 +1,4 @@
-local rpc2 = require("libs/rpc2")
+local rpc = require("libs/rpc3")
 local robot = require("robot")
 local component = require("component")
 local craft = component.crafting.craft
@@ -7,12 +7,11 @@ local sides = require("sides")
 
 robot.select(16)
 
-api = {}
+local slotMap = {1, 2, 3, 5, 6, 7, 9, 10, 11 }
 
-local slotMap = {1, 2, 3, 5, 6, 7, 9, 10, 11}
-function api.craft(n)
+function craft(n)
   for i=1,9 do
-    if ic.getStackInSlot(sides.down, i + 2) ~= nil then
+    if ic.getStackInSlot(sides.down, i + 2) then
       robot.select(slotMap[i])
       ic.suckFromSlot(sides.down, i + 2)
     end
@@ -28,6 +27,4 @@ function api.craft(n)
   return table.unpack(r)
 end
 
-local objects = { crafter = api }
-
-rpc2.bind(objects)
+rpc.bind({ craft = craft })

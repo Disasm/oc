@@ -5,7 +5,7 @@ local nb = component.iron_noteblock
 local instrument = 5
 local volume = 1
 
-function play_note(x)
+local function play_note(x)
   nb.playNote(instrument, x, volume)
 end
 

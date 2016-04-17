@@ -1,14 +1,11 @@
 local input = require("libcraft/craft_input")
 local input2 = require("craft2/input2")
-local db = require("craft2/item_database")
+local item_db = require("craft2/item_db")()
 local filesystem = require("filesystem")
-local util = require("libs/stack_util")
 local serialization = require("serialization")
-local term = require("term")
 local shell = require("shell")
-local gpu = require("component").gpu
 
-local master = nil
+local master
 local master_enqueue = function(cmd)
   print("master.enqueue_command("..serialization.serialize(cmd)..")")
 end
@@ -31,8 +28,8 @@ end
 
 -- options: onlyPresent, hasCount
 function inputItem(options)
-  local ids = nil
-  local counts = nil
+  local ids
+  local counts
   while true do
     print("Enter item name (empty to exit):")
     local name = input.getString()
@@ -40,7 +37,7 @@ function inputItem(options)
       return
     end
 
-    ids = db.find_inexact(name)
+    ids = item_db.find_inexact(name)
 
     counts = master.get_stored_item_counts(ids)
     if options.onlyPresent then
@@ -67,7 +64,7 @@ function inputItem(options)
   for i = 1,#ids do
     local item = {}
     item.id = ids[i]
-    local s = db.get(item.id)
+    local s = item_db.get(item.id)
     local count = counts[item.id] or 0
     if count == 0 then
       item.color = 0xffff30
@@ -82,9 +79,9 @@ function inputItem(options)
     return
   end
   local id = item.id
-  local s = db.get(id)
+  local s = item_db.get(id)
 
-  local n = nil
+  local n
   if options.hasCount then
     while true do
       print("Enter item count (enter to cancel):")
@@ -125,7 +122,7 @@ function viewRecipes()
       for index, str in pairs(strings) do
         print(string.format("%d. %s", index, str))
       end
-      function removeRecipe()
+      local function removeRecipe()
         print("Enter recipe index (enter to cancel):")
         local n = input.getNumber()
         if n == nil then
@@ -174,7 +171,7 @@ function addRecipe()
       for i = 1, 9 do
         local s = ""
         if stacks[i] then
-          s = db.istack_to_string(stacks[i])
+          s = item_db.istack_to_string(stacks[i])
         end
         io.write(string_lpad(string.format("[%d] %s", i, s), 20))
         if i % 3 == 0 then
@@ -184,7 +181,7 @@ function addRecipe()
     else
       local any = false
       for i, stack in pairs(stacks) do
-        print(string.format("[%d] %s", i, db.istack_to_string(stack)))
+        print(string.format("[%d] %s", i, item_db.istack_to_string(stack)))
         any = true
       end
       if not any then
@@ -281,10 +278,9 @@ end
 return function()
   local isEmulator = require("libs/emulator").isEmulator
   if not isEmulator then
-    local rpc = require("libs/rpc2")
+    local rpc = require("libs/rpc3")
     local hosts = require("hosts")
-    local h = rpc.connect(hosts.master)
-    master = h.master
+    master = rpc.connect(hosts.master, { timeout = 15 })
     master_enqueue = function(x)
       if pcall(h.master.enqueue_command, x) then
         print("Command added")

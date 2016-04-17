@@ -5,14 +5,21 @@ local modem = component.modem
 
 local local_address = modem.address
 
+local rpc = {}
+rpc.PING_MODE = { ALWAYS = 1, ON_CONNECT = 2, NEVER = 0 }
+
 local default_options = {
   request_port = 111,
   response_port = 112,
   timeout = 5,
-  retries = 4,
+  retries = 0,
   ping_timeout = 1,
-  ping_mode = "ping_always"
+  ping_mode = rpc.PING_MODE.ON_CONNECT,
+  ping_count = 3
 }
+
+local busy_request_ports = {}
+local busy_response_ports = {}
 
 local function defaultize_options(options)
   options = options or {}
@@ -23,7 +30,6 @@ local function defaultize_options(options)
   return r
 end
 
-local rpc = {}
 
 local function perform_rpc_request(remote_address, options, payload)
   local request = serialization.serialize(payload)
@@ -54,16 +60,17 @@ function rpc.connect(address, options)
   modem.open(final_options.response_port)
 
   local function make_ping()
-    local val = 1
-    local is_ok, result = perform_rpc_request(address, final_options, { action = "ping", args = { val } })
-    if not is_ok then
-      error("Ping failed: "..result)
-    end
-    if type(result) ~= "table" then
-      error("Ping failed: result is not a table")
-    end
-    if result[1] ~= val then
-      error("Ping failed: invalid result")
+    for val = 1, final_options.ping_count do
+      local is_ok, result = perform_rpc_request(address, final_options, { action = "ping", args = { val } })
+      if not is_ok then
+        error("Ping failed: "..tostring(result))
+      end
+      if type(result) ~= "table" then
+        error("Ping failed: result is not a table")
+      end
+      if result[1] ~= val then
+        error("Ping failed: invalid result")
+      end
     end
   end
 
@@ -80,6 +87,9 @@ function rpc.connect(address, options)
     if type(obj) == "table" then
       if obj.__rpc and obj.__rpc.function_id then
         return function(...)
+          if final_options.ping_mode == rpc.PING_MODE.ALWAYS then
+            make_ping()
+          end
           return make_call(obj.__rpc.function_id, {...})
         end
       else
@@ -94,12 +104,16 @@ function rpc.connect(address, options)
     end
   end
 
+  if final_options.ping_mode ~= rpc.PING_MODE.NEVER then
+    make_ping()
+  end
 
   local is_ok, wrapper = perform_rpc_request(address, final_options, { action = "connect" })
   if not is_ok then
     error("Connect failed: "..wrapper)
   end
   return rewrap_object(wrapper)
+
 
 end
 
@@ -108,6 +122,12 @@ function rpc.bind(obj, options)
     error("rpc.bind supports tables only", 1)
   end
   local final_options = defaultize_options(options)
+  if busy_request_ports[final_options.request_port] or busy_response_ports[final_options.response_port] then
+    print("rpc.bind: port is busy.")
+    return false
+  end
+  busy_request_ports[final_options.request_port] = true
+  busy_response_ports[final_options.response_port] = true
   modem.open(final_options.request_port)
   local bound_functions = {}
   local function convert_to_bound_object(value)

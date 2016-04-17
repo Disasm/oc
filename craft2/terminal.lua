@@ -1,20 +1,16 @@
-local rpc = require("libs/rpc2")
-local input = require("libcraft/craft_input")
+local rpc = require("libs/rpc3")
 local component = require("component")
 local gpu = component.gpu
 local unicode = require("unicode")
-local text = require("text")
 local term = require("term")
 local inspect = require("serialization").serialize
-local config = require("craft2/config")
-local hosts = require("hosts")
 local window = require("craft2/window")
-local item_database = require("craft2/item_database")
+local item_db = require("craft2/item_db")()
 
 local debugWidth
 
-local logWindow = nil
-local taskWindow = nil
+local logWindow
+local taskWindow
 
 function updateTaskList(tasks)
   taskWindow:clear()
@@ -37,7 +33,7 @@ function updateTaskList(tasks)
     end
     local s = task.id..":"..name
     if (task.name == "output") or (task.name == "craft") or (task.name == "craft_one") then
-      local stack = item_database.get(task.item_id)
+      local stack = item_db.get(task.item_id)
 
       local count = task.count or 0
       local count_left = task.count_left or count
@@ -72,9 +68,8 @@ end
 
 -- local computer = require("computer")
 
-return { run = function()
+return function()
   term.clear()
-  local master = rpc.connect(hosts[config.master]).master
 
   local w, h = gpu.getResolution()
   debugWidth = math.floor(w * 0.3)
@@ -94,7 +89,7 @@ return { run = function()
   gpu.set(w - debugWidth, consoleHeight+1, unicode.char(0x2563))
 
   local wrapper = {
-    item_database = require("craft2/item_database"),
+    item_database = require("craft2/item_db")(),
     terminal = {
       set_tasks = function(tasks)
         updateTaskList(tasks)
@@ -104,7 +99,8 @@ return { run = function()
         gpu.setForeground(obj.color)
         debug_print(obj.text)
         gpu.setForeground(0xffffff)
-      end
+      end,
+      notifications = require("craft2/notifications")
     }
   }
 
@@ -113,4 +109,4 @@ return { run = function()
 
   require("craft2/terminal_gui")()
 
-end }
+end

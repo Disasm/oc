@@ -1,7 +1,7 @@
 
-local r = {};
+local marker_items = {};
 
-function r.stack_to_chest_role(stack)
+function marker_items.stack_to_chest_role(stack)
   if stack == nil then return "storage" end
   if stack.label == "Stick" then
     if stack.size == 64 then
@@ -29,4 +29,4 @@ function r.stack_to_chest_role(stack)
   return "storage"
 end
 
-return r
+return marker_items

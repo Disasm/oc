@@ -1,8 +1,7 @@
-return { run = function()
-
+return function()
   local config = require("craft2/config")
   local marker_items = require("craft2/marker_items")
-  local rpc = require("libs/rpc2")
+  local rpc = require("libs/rpc3")
   local hosts = require("hosts")
   local fser = require("libs/file_serialization")
   local sides = require("sides")
@@ -13,8 +12,8 @@ return { run = function()
 
   local components = {}
   table.insert(components, transposers_interface)
-  for i, host in ipairs(config.slaves) do
-    local v = rpc.connect(hosts[host], nil, nil, "ping_once").transposers_interface
+  for _, host in ipairs(config.slaves) do
+    local v = rpc.connect(hosts[host]).transposers_interface
     v.modem_address = hosts[host]
     table.insert(components, v)
   end
@@ -32,9 +31,9 @@ return { run = function()
     end
   end
   print("Checking chests...")
-  local probe_location = nil
+  local probe_location
   local transposer_to_side_to_chest = {}
-  for i, t in ipairs(transposers) do
+  for i, _ in ipairs(transposers) do
     transposer_to_side_to_chest[i] = {}
   end
   for i, t in ipairs(transposers) do
@@ -106,7 +105,7 @@ return { run = function()
         if not chest_id then
           -- completely new chest
           local slots_count = transposers[transposer].get_slots_count(side)
-          local role = nil
+          local role
           if probe_location.transposer == transposer and probe_location.side == side then
             role = "incoming"
           elseif slots_count == 5 then
@@ -123,12 +122,12 @@ return { run = function()
           table.insert(chests, chest)
           chest_id = #chests
           print(string.format("Chest %d (role: %s, transposers: %d)", chest_id, chest.role, #(chest.transposers)))
-          for i, item in ipairs(chest_transposers) do
+          for _, item in ipairs(chest_transposers) do
             transposer_to_side_to_chest[item.transposer_id][item.side] = chest_id
           end
         end
       end
-      for i, item in ipairs(chests[chest_id].transposers) do
+      for _, item in ipairs(chests[chest_id].transposers) do
         if not transposers_that_began_cycle[item.transposer_id] then
           run_probe_cycle(item.transposer_id, item.side)
         end
@@ -158,7 +157,7 @@ return { run = function()
   transposers[probe_location.transposer].transfer(probe_location.side, probe_location.side, nil, 1, probe_location.slot)
 
   local topology_data = { transposers = {}, chests = chests }
-  for i, t in ipairs(transposers) do
+  for _, t in ipairs(transposers) do
     local v = { transposer_address = t.address, modem_address = t.interface.modem_address }
     table.insert(topology_data.transposers, v)
   end
@@ -166,4 +165,4 @@ return { run = function()
   print("Topology scan completed.")
   return topology_data
 
-end }
+end

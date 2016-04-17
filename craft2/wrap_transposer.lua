@@ -1,4 +1,4 @@
-return { wrap_transposer = function(interface, address) 
+return function(interface, address)
   local r = { interface=interface, address=address }
   function r.get_slots_count(side) 
     return r.interface.get_slots_count(r.address, side)
@@ -17,4 +17,4 @@ return { wrap_transposer = function(interface, address)
     return r.interface.transfer(r.address, source_side, sink_side, count, source_slot, sink_slot)
   end  
   return r
-end }
+end

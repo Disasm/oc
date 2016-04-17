@@ -1,9 +1,8 @@
 
-local fser = require("libs/file_serialization")
-
-return { wrap_chest = function(chest_id, chest_data)
-  local master = require("craft2/master_main")
-  local item_db = require("craft2/item_database")
+return function(chest_id, chest_data)
+  local fser = require("libs/file_serialization")
+  local master = require("craft2/master")()
+  local item_db = require("craft2/item_db")()
   local function max_stack(item_id)
     return item_db.get(item_id).maxSize
   end
@@ -19,7 +18,7 @@ return { wrap_chest = function(chest_id, chest_data)
   local content_cache_modified = false
   r.content_cache_enabled = (r.role == "storage")
 
-  for i, d in ipairs(chest_data.transposers) do
+  for _, d in ipairs(chest_data.transposers) do
     local entry = { transposer = master.transposers[d.transposer_id], side = d.side }
     if not r.main_transposer and not entry.transposer.interface.modem_address then
       -- first local transposer is assigned as main
@@ -145,7 +144,6 @@ return { wrap_chest = function(chest_id, chest_data)
     end
     local path = r.paths_to_chests[other_chest.id]
     if #path == 1 then path = { r.id, r.id } end
-    local current_step = 1
     local current_slot = source_slot
     for current_step = 1, (#path-1) do
       local current_chest = master.chests[path[current_step]]
@@ -250,8 +248,8 @@ return { wrap_chest = function(chest_id, chest_data)
       end
     end
     while true do
-      local min_distance = nil
-      local min_distance_vertix = nil
+      local min_distance
+      local min_distance_vertix
       for i = 1, vertices_count do
         if not visited_vertices[i] then
           if min_distance == nil or distances[i] < min_distance then
@@ -330,4 +328,4 @@ return { wrap_chest = function(chest_id, chest_data)
   r.ensure_first_slot_free()
 
   return r
-end }
+end
