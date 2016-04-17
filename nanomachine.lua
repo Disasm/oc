@@ -8,7 +8,7 @@ mt = {
       while true do
         local r = table.pack(event.pull(2, "modem_message"))
         if r.n > 0 then
-          if r[3] == obj.address and r[6] == "nanomachines" then 
+          if r[3] == obj.address and r[6] == "nanomachines" then
             return table.unpack(r, 8)
           end
         else
@@ -24,6 +24,9 @@ mt = {
 function wrap(address)
   local t = {}
   t.address = address
+  function t.setInputFast(input, value)
+    modem.send(t.address, 27091, "nanomachines", "setInput", input, value)
+  end
   setmetatable(t, mt)
   return t
 end
