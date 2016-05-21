@@ -6,7 +6,6 @@ return function()
 
   local master = require("craft2/master")()
   local crafting = require("craft2/crafting")()
-  local l = master.log
 
   local item_db = require("craft2/item_db")()
 
@@ -31,7 +30,7 @@ return function()
     if existing_space > 0 then
       score = score + 15
     end
-    l.dbg(string.format("chest=%d score=%d (dist=%d slots=%d e.s.=%d)", sink_chest.id, score, distance, free_slots, existing_space))
+    master.log.dbg(string.format("chest=%d score=%d (dist=%d slots=%d e.s.=%d)", sink_chest.id, score, distance, free_slots, existing_space))
     return score
   end
 
@@ -40,19 +39,19 @@ return function()
     local loaded_items = {}
     local allow_slot2 = source_chest.role == "machine_output"
     for i = 1, source_chest.slots_count do
-      l.dbg("Processing slot "..i)
+      master.log.dbg("Processing slot "..i)
       if i ~= 2 or allow_slot2 then
-        l.dbg("test1")
+        master.log.dbg("test1")
         local stack = source_chest.get_istack(i)
-        l.dbg("test2 "..l.inspect(stack))
+        master.log.dbg("test2 "..master.log.inspect(stack))
         if stack[1] > 0 then
-          l.dbg("stack[1] > 0")
+          master.log.dbg("stack[1] > 0")
           local max_score = -1
           local max_score_chest
           for j, sink_chest in ipairs(master.chests) do
-            l.dbg("iterating: chest "..j)
+            master.log.dbg("iterating: chest "..j)
             if sink_chest.role == "storage" then
-              l.dbg("Calling score_for_adding_items")
+              master.log.dbg("Calling score_for_adding_items")
               local score = score_for_adding_items(stack, source_chest, sink_chest)
               if score > max_score then
                 max_score = score
@@ -63,21 +62,21 @@ return function()
           if not max_score_chest then
             task.status = "error"
             task.status_message = "No available chests to store items!"
-            l.dbg("fail 1")
+            master.log.dbg("fail 1")
             return false
           end
-          l.dbg(string.format("transfer from slot %d into chest %d", i, max_score_chest.id))
+          master.log.dbg(string.format("transfer from slot %d into chest %d", i, max_score_chest.id))
           if not source_chest.transfer_to(max_score_chest, stack[1], i, nil) then
             task.status = "error"
             task.status_message = "Transfer failed."
-            l.dbg("fail 2")
+            master.log.dbg("fail 2")
             return false
           end
           loaded_items[stack[2]] = (loaded_items[stack[2]] or 0) + stack[1]
         end
       end
     end
-    l.dbg("Loading items from chest succeeded.")
+    master.log.dbg("Loading items from chest succeeded.")
     return true, loaded_items
   end
 
@@ -110,7 +109,7 @@ return function()
       error("r.load_to_chest: chest is nil")
     end
     -- todo: select closest and fullest chest
-    l.dbg(string.format("Loading %d x %d to chest", count, item_id))
+    master.log.dbg(string.format("Loading %d x %d to chest", count, item_id))
     local count_left = count
     for _, chest in ipairs(master.chests) do
       for i = 3, chest.slots_count do
@@ -118,13 +117,13 @@ return function()
           local stack = chest.get_istack(i)
           if item_id == stack[2] then
             local current_count = math.min(count_left, stack[1])
-            l.dbg(string.format("Transfering %d items from chest %d", current_count, chest.id))
+            master.log.dbg(string.format("Transfering %d items from chest %d", current_count, chest.id))
             if not chest.transfer_to(sink_chest, current_count, i, sink_slot) then
               return false, "Transfer failed"
             end
             count_left = count_left - current_count
             if count_left == 0 then
-              l.dbg("Loading items into chest succeeded.")
+              master.log.dbg("Loading items into chest succeeded.")
               return true
             end
           end
@@ -157,7 +156,7 @@ return function()
       if crafting.has_recipe(task.item_id) then
         if not task.craft_requested then
           task.craft_requested = true
-          l.info(string.format("Requesting craft of %s", item_db.istack_to_string({ task.count_left, task.item_id })))
+          master.log.info(string.format("Requesting craft of %s", item_db.istack_to_string({ task.count_left, task.item_id })))
           master.add_task({
             name = "craft",
             item_id = task.item_id,
@@ -170,8 +169,8 @@ return function()
         return false
       else
         -- no crafting recipe
-        l.error(string.format("Not enough items. Missing: %s", item_db.istack_to_string({ task.count_left, task.item_id })))
-        l.error("Task is discarded.")
+        master.log.error(string.format("Not enough items. Missing: %s", item_db.istack_to_string({ task.count_left, task.item_id })))
+        master.log.error("Task is discarded.")
         master.notify(false)
         return true
       end

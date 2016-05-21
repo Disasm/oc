@@ -10,7 +10,8 @@ return function()
   local wrap_transposer = require("craft2/wrap_transposer")
   local wrap_chest = require("craft2/wrap_chest")
   local local_item_database = require("craft2/item_db")()
-  local hosts = require("hosts")
+  local hosts_ok, hosts = pcall(require, "hosts")
+  if not hosts_ok then hosts = {} end
   local config = require("craft2/config")
   local gpu = require("component").gpu
   local event = require("event")
@@ -48,12 +49,12 @@ return function()
     else
       obj.color = 0xffffff
     end
-    gpu.setForeground(obj.color)
-    print(obj.text)
+--    gpu.setForeground(obj.color)
+--    print(obj.text)
+--    gpu.setForeground(0xffffff)
     if config.write_log then
       log_file:write(obj.text.."\n")
     end
-    gpu.setForeground(0xffffff)
     for _, t in ipairs(remote_terminals) do
       t.log_message(obj)
     end
@@ -332,16 +333,17 @@ return function()
 
   function master.run()
     l.info("Master is starting...")
-    for _, host in ipairs(config.slaves) do
+    for _, host in ipairs(config.slaves or {}) do
       table.insert(remote_databases, rpc.connect(hosts[host]).item_database)
     end
-    for _, host in ipairs(config.terminals) do
+    for _, host in ipairs(config.terminals or {}) do
       local v = rpc.connect(hosts[host])
       table.insert(remote_databases, v.item_database)
       table.insert(remote_terminals, v.terminal)
     end
-
-    master.crafter = rpc.connect(hosts[config.crafter])
+    if config.crafter then
+      master.crafter = rpc.connect(hosts[config.crafter])
+    end
 
     if config.write_log then
       log_file = filesystem.open("/var/log/craft2.log", "a")
@@ -354,7 +356,7 @@ return function()
     local topology_data = fser.load(require("craft2/paths").topology)
     if not topology_data then
       l.warn("No topology file. Running rebuild...")
-      topology_data = require("craft2/master_rebuild").run()
+      topology_data = require("craft2/master_rebuild")()
     end
     master.transposers = {}
     master.chests = {}
@@ -392,13 +394,17 @@ return function()
       chest.find_paths_to_other_chests()
     end
 
-    rpc.bind(rpc_interface)
+    if rpc.is_available then
+      rpc.bind(rpc_interface)
+    end
     master.expect_machine_output() -- clean on startup
 
     event.timer(tick_interval, tick)
     l.info("Master is now live.")
     master.notify(true)
 
+    local local_terminal = require("craft2/terminal")(rpc_interface)
+    table.insert(remote_terminals, local_terminal.terminal)
   end
 
   return master

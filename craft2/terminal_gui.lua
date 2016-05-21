@@ -275,12 +275,10 @@ function killTask()
   master_enqueue({action="remove_task", task_id=id})
 end
 
-return function()
+return function(master_interface)
   local isEmulator = require("libs/emulator").isEmulator
   if not isEmulator then
-    local rpc = require("libs/rpc3")
-    local hosts = require("hosts")
-    master = rpc.connect(hosts.master, { timeout = 15 })
+    master = master_interface
     master_enqueue = function(x)
       if pcall(h.master.enqueue_command, x) then
         print("Command added")

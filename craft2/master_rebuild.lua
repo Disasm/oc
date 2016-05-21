@@ -2,17 +2,18 @@ return function()
   local config = require("craft2/config")
   local marker_items = require("craft2/marker_items")
   local rpc = require("libs/rpc3")
-  local hosts = require("hosts")
+  local hosts_ok, hosts = pcall(require, "hosts")
+  if not hosts_ok then hosts = {} end
   local fser = require("libs/file_serialization")
   local sides = require("sides")
   local shell = require("shell")
 
   local transposers_interface = require("craft2/transposers_interface")
-  local wrap_transposer = require("craft2/wrap_transposer").wrap_transposer
+  local wrap_transposer = require("craft2/wrap_transposer")
 
   local components = {}
   table.insert(components, transposers_interface)
-  for _, host in ipairs(config.slaves) do
+  for _, host in ipairs(config.slaves or {}) do
     local v = rpc.connect(hosts[host]).transposers_interface
     v.modem_address = hosts[host]
     table.insert(components, v)

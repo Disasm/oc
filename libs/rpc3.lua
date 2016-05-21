@@ -1,11 +1,14 @@
 local component = require("component")
 local serialization = require("serialization")
 local event = require("event")
+if not component.isAvailable("modem") then
+  return { is_available = false, message = 'No modem available.' }
+end
 local modem = component.modem
 
 local local_address = modem.address
 
-local rpc = {}
+local rpc = { is_available = true }
 rpc.PING_MODE = { ALWAYS = 1, ON_CONNECT = 2, NEVER = 0 }
 
 local default_options = {

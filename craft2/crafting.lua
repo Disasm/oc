@@ -295,6 +295,12 @@ return function()
             return false
           end
         end
+        if not master.crafter then
+          l.error("Crafter is not available")
+          task.status = "error"
+          task.status_message = "Crafter is not available"
+          return false
+        end
         master.crafter.craft(one_craft_output * current_use_count)
         use_count_left = use_count_left - current_use_count
       end

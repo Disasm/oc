@@ -68,7 +68,7 @@ end
 
 -- local computer = require("computer")
 
-return function()
+return function(master_interface)
   term.clear()
 
   local w, h = gpu.getResolution()
@@ -103,10 +103,17 @@ return function()
       notifications = require("craft2/notifications")
     }
   }
-
-  rpc.bind(wrapper)
+  if rpc.is_available then
+    rpc.bind(wrapper)
+  end
   print("Welcome to Craft 2 terminal")
+  if not master_interface then
+    local rpc = require("libs/rpc3")
+    local hosts_ok, hosts = pcall(require, "hosts")
+    if not hosts_ok then hosts = {} end
+    master_interface = rpc.connect(hosts.master, { timeout = 15 })
+  end
 
-  require("craft2/terminal_gui")()
-
+  require("craft2/terminal_gui")(master_interface)
+  return wrapper
 end
