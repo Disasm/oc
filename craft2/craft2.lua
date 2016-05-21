@@ -1,6 +1,3 @@
-print("Welcome to Craft 2")
-print("")
-
 local config = require("craft2/config")
 
 if config.role == "slave" then

@@ -280,7 +280,7 @@ return function(master_interface)
   if not isEmulator then
     master = master_interface
     master_enqueue = function(x)
-      if pcall(h.master.enqueue_command, x) then
+      if pcall(master.enqueue_command, x) then
         print("Command added")
       else
         print("Master is not responding")

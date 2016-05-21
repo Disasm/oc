@@ -133,5 +133,7 @@ return function(master_interface)
   end
 
   require("craft2/terminal_gui")(master_interface)
+  debug_print("Terminal log is now live.")
+  main_print("Terminal is now live.")
   return wrapper
 end

@@ -96,7 +96,6 @@ return function()
     local new_tasks_serialized = l.inspect(master.tasks)
     if new_tasks_serialized ~= previous_tasks_serialized then
       previous_tasks_serialized = new_tasks_serialized
-      print("Tasks: "..new_tasks_serialized)
       for _, t in ipairs(remote_terminals) do
         t.set_tasks(master.tasks)
       end
@@ -321,7 +320,7 @@ return function()
     end)
     if not is_ok then
       l.error("Error: "..err.message)
-      print(err.traceback)
+      l.error(err.traceback)
       if config.write_log then
         log_file:write(err.traceback.."\n")
       end
@@ -397,14 +396,15 @@ return function()
     if rpc.is_available then
       rpc.bind(rpc_interface)
     end
+    local local_terminal = require("craft2/terminal")(rpc_interface)
+    table.insert(remote_terminals, local_terminal.terminal)
+
     master.expect_machine_output() -- clean on startup
 
     event.timer(tick_interval, tick)
     l.info("Master is now live.")
     master.notify(true)
 
-    local local_terminal = require("craft2/terminal")(rpc_interface)
-    table.insert(remote_terminals, local_terminal.terminal)
   end
 
   return master
