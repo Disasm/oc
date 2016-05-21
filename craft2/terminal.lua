@@ -9,6 +9,7 @@ local item_db = require("craft2/item_db")()
 
 local debugWidth
 
+local mainWindow
 local logWindow
 local taskWindow
 
@@ -66,6 +67,20 @@ function debug_print(...)
   logWindow:write(s)
 end
 
+function main_print(...)
+  local t = table.pack(...)
+  if t.n == 0 then
+    t = {"\n", n=1}
+  end
+
+  local s = tostring(t[1])
+  for i = 2,t.n do
+    s = s.." "..tostring(t[i])
+  end
+
+  mainWindow:write(s)
+end
+
 -- local computer = require("computer")
 
 return function(master_interface)
@@ -76,7 +91,10 @@ return function(master_interface)
   logWindow = window.create(w - debugWidth+1, 1, debugWidth, h)
   logWindow:clear()
   local consoleHeight = math.floor(h * 0.5)
-  term.setViewport(w-debugWidth-1, consoleHeight, 0, 0)
+  --term.setViewport(w-debugWidth-1, consoleHeight, 0, 0)
+  mainWindow = window.create(1, 1, w-debugWidth-1, consoleHeight)
+  mainWindow:clear()
+  _G.print = main_print
   taskWindow = window.create(1, consoleHeight+2, w-debugWidth-1, h-consoleHeight-1)
   taskWindow:clear()
 
