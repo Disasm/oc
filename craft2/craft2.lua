@@ -10,8 +10,8 @@ elseif config.role == "master" then
     local command = cmd_args[1]
     if command == "rebuild" then
       require("craft2/master_rebuild")()
---    elseif command == "import_old_recipes" then
---      require("craft2/import_old_recipes").run(cmd_args[2])
+    elseif command == "import_old_recipes" then
+      require("craft2/import_old_recipes").run(cmd_args[2])
     else
       print("Unknown command!")
       error()

@@ -9,7 +9,6 @@ return function()
   local paths = require("craft2/paths")
   local fser = require("libs/file_serialization")
   local master = require("craft2/master")()
-  local l = master.log
 
   function crafting.get_machines()
     return {craft=1, Extruder=1, Roller=1, Compressor=1, Furnace=1, Extractor=1, Macerator=1}
@@ -20,7 +19,7 @@ return function()
   end
 
   function crafting.process_task(task)
-    l.error("craft task is not implemented yet")
+    master.log.error("craft task is not implemented yet")
     return false
   end
 
@@ -73,13 +72,13 @@ return function()
     local data = crafting.get_recipes(item_id)
     for _, old_recipe in ipairs(data) do
       if crafting.recipe_hash(recipe) == crafting.recipe_hash(old_recipe) then
-        l.warn("This recipe already existed.")
+        master.log.warn("This recipe already existed.")
         return
       end
     end
     table.insert(data, recipe)
-    l.info(string.format("New recipe added for %s:", item_db.get(item_id).label))
-    l.info(crafting.recipe_readable(recipe))
+    master.log.info(string.format("New recipe added for %s:", item_db.get(item_id).label))
+    master.log.info(crafting.recipe_readable(recipe))
     fser.save(paths.recipes(item_id), data)
   end
 
@@ -135,7 +134,7 @@ return function()
     local related_recipes = crafting.get_recipes(id)
 
     if #related_recipes == 0 then
-      l.error(string.format("Missing items: %s", item_db.istack_to_string(istack_check)))
+      master.log.error(string.format("Missing items: %s", item_db.istack_to_string(istack_check)))
       return false, reservation, {}
     end
 
@@ -208,10 +207,10 @@ return function()
   function crafting.craft_all(task)
     local ok, _, crafts = emulate_craft({task.count, task.item_id})
     if ok then
-      --l.warn("Emulation OK")
+      --master.log.warn("Emulation OK")
       crafts = merge_crafts(crafts)
     else
-      --l.warn("Emulation failed")
+      --master.log.warn("Emulation failed")
       return false
     end
 
@@ -256,7 +255,7 @@ return function()
     for _, id in pairs(ids) do
       if not counts[id] or counts[id] < required_counts[id] then
         local missing_stack = { required_counts[id] - (counts[id] or 0), id }
-        l.error(string.format("Missing required item: %s", item_db.istack_to_string(missing_stack)))
+        master.log.error(string.format("Missing required item: %s", item_db.istack_to_string(missing_stack)))
         task.status = "error"
         task.status_message = "Missing items"
         return false
@@ -269,8 +268,8 @@ return function()
       end
       local max_crafts_per_use = total_use_count
       local function check_max_craft(stack)
-        l.info("stack: " .. l.inspect(stack))
-        l.info("db data: " .. l.inspect(item_db.get(stack[2])))
+        master.log.info("stack: " .. master.log.inspect(stack))
+        master.log.info("db data: " .. master.log.inspect(item_db.get(stack[2])))
         local stack_max_crafts = math.floor(max_stack(stack[2]) / stack[1])
         if max_crafts_per_use > stack_max_crafts then
           max_crafts_per_use = stack_max_crafts
@@ -289,14 +288,14 @@ return function()
         local current_use_count = math.min(use_count_left, max_crafts_per_use)
         for i, stack in pairs(recipe.from) do
           if not item_storage.load_to_chest(master.role_to_chest["craft"], i + 2, stack[2], stack[1] * current_use_count) then
-            l.error("storage.load_to_chest unexpectedly failed")
+            master.log.error("storage.load_to_chest unexpectedly failed")
             task.status = "error"
             task.status_message = "Unexpected error"
             return false
           end
         end
         if not master.crafter then
-          l.error("Crafter is not available")
+          master.log.error("Crafter is not available")
           task.status = "error"
           task.status_message = "Crafter is not available"
           return false
@@ -305,9 +304,16 @@ return function()
         use_count_left = use_count_left - current_use_count
       end
     else
+      local machine_chest = master.role_to_chest[recipe.machine]
+      if not machine_chest then
+        master.log.error("Machine is not available: "..recipe.machine)
+        task.status = "error"
+        task.status_message = "No machine"
+        return false
+      end
       for _, istack in pairs(recipe.from) do
-        if not item_storage.load_to_chest(master.role_to_chest[recipe.machine], nil, istack[2], istack[1] * total_use_count) then
-          l.error("storage.load_to_chest unexpectedly failed")
+        if not item_storage.load_to_chest(machine_chest, nil, istack[2], istack[1] * total_use_count) then
+          master.log.error("storage.load_to_chest unexpectedly failed")
           task.status = "error"
           task.status_message = "Unexpected error"
           return false
@@ -326,17 +332,17 @@ return function()
       if result then
         task.expected_count = task.expected_count - (result[task.item_id] or 0)
         if task.expected_count == 0 then
-          l.info("Craft completed.")
+          master.log.info("Craft completed.")
           return true
         else
           return false
         end
       end
     else
-      l.info(string.format("Crafting %s", item_db.istack_to_string({ task.count, task.item_id })))
+      master.log.info(string.format("Crafting %s", item_db.istack_to_string({ task.count, task.item_id })))
       local recipes = crafting.get_recipes(task.item_id)
       if task.recipe_index < 1 or task.recipe_index > #recipes then
-        l.error(string.format("Invalid recipe index."))
+        master.log.error(string.format("Invalid recipe index."))
         return true
       end
       local recipe_errors = {}
@@ -359,20 +365,20 @@ return function()
           end
         end
         if any then
-          l.info("")
-          l.info("Current craft output:")
+          master.log.info("")
+          master.log.info("Current craft output:")
           for id, count in pairs(task.output) do
-            l.info(item_db.istack_to_string({ count, id }))
+            master.log.info(item_db.istack_to_string({ count, id }))
           end
-          l.info("")
+          master.log.info("")
         end
       end
     else
-      l.info(string.format("Crafting with new recipe"))
+      master.log.info(string.format("Crafting with new recipe"))
       local ok, result = master.expect_machine_output(nil)
       for id, count in pairs(result) do
         if count > 0 then
-          l.warn("Bad news: machine output was not empty.")
+          master.log.warn("Bad news: machine output was not empty.")
         end
       end
       load_items_into_machine(task.recipe, 1, task)

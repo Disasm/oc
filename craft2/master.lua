@@ -36,6 +36,8 @@ return function()
   master.log.inspect = require("serialization").serialize
   local log_file
 
+  local local_terminal_initialized = false
+
   function master.log.message(obj)
     if obj.level == "warning" then
       obj.color = 0xffff00
@@ -49,9 +51,11 @@ return function()
     else
       obj.color = 0xffffff
     end
---    gpu.setForeground(obj.color)
---    print(obj.text)
---    gpu.setForeground(0xffffff)
+    if not local_terminal_initialized then
+      gpu.setForeground(obj.color)
+      print(obj.text)
+      gpu.setForeground(0xffffff)
+    end
     if config.write_log then
       log_file:write(obj.text.."\n")
     end
@@ -398,6 +402,7 @@ return function()
     end
     local local_terminal = require("craft2/terminal")(rpc_interface)
     table.insert(remote_terminals, local_terminal.terminal)
+    local_terminal_initialized = true
 
     master.expect_machine_output() -- clean on startup
 

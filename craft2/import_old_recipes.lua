@@ -2,15 +2,19 @@ local file_serialization = require("libs/file_serialization")
 local filesystem = require("filesystem")
 
 return { run = function(input_path)
-  local item_database = require("craft2/item_database")
-  local crafting = require("craft2/crafting")
+  local item_db = require("craft2/item_db")()
+  local crafting = require("craft2/crafting")()
+
+--  for _, stack in ipairs(file_serialization.load("/data/item_db_good.txt")) do
+--    item_db.add(stack)
+--  end
 
   local function convert_stack(stack)
-    local id = item_database.stack_to_id(stack)
+    local id = item_db.stack_to_id(stack)
     if not id then
       error("item not found in database: "..stack.label)
     end
-    return { stack.count, id }
+    return { stack.size, id }
   end
 
   for input_file in filesystem.list(input_path) do

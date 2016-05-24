@@ -6,6 +6,7 @@ local term = require("term")
 local inspect = require("serialization").serialize
 local window = require("craft2/window")
 local item_db = require("craft2/item_db")()
+local event = require("event")
 
 local debugWidth
 
@@ -132,8 +133,6 @@ return function(master_interface)
     master_interface = rpc.connect(hosts.master, { timeout = 15 })
   end
 
-  require("craft2/terminal_gui")(master_interface)
-  debug_print("Terminal log is now live.")
-  main_print("Terminal is now live.")
+  event.timer(1, function() require("craft2/terminal_gui")(master_interface) end)
   return wrapper
 end
