@@ -9,6 +9,20 @@ return function()
   local paths = require("craft2/paths")
   local fser = require("libs/file_serialization")
   local master = require("craft2/master")()
+  local filesystem = require("filesystem")
+
+  local function recipes_path(id)
+    return string.format("%s%d", paths.recipes, id)
+  end
+
+  function crafting.all_craftable_ids()
+    local r = {}
+    for name in filesystem.list(paths.recipes) do
+      table.insert(r, tonumber(name))
+    end
+    return r
+  end
+
 
   function crafting.get_machines()
     return {craft=1, Extruder=1, Roller=1, Compressor=1, Furnace=1, Extractor=1, Macerator=1}
@@ -48,7 +62,7 @@ return function()
   end
 
   function crafting.get_recipes(item_id)
-    local data = fser.load(paths.recipes(item_id))
+    local data = fser.load(recipes_path(item_id))
     if not data then
       data = {}
     end
@@ -79,13 +93,13 @@ return function()
     table.insert(data, recipe)
     master.log.info(string.format("New recipe added for %s:", item_db.get(item_id).label))
     master.log.info(crafting.recipe_readable(recipe))
-    fser.save(paths.recipes(item_id), data)
+    crafting.set_all_recipes(item_id, data)
   end
 
   function crafting.remove_recipe(item_id, recipe_index)
     local data = crafting.get_recipes(item_id)
     table.remove(data, recipe_index)
-    fser.save(paths.recipes(item_id), data)
+    crafting.set_all_recipes(item_id, data)
   end
 
   local function count_items(ids, reservation)
@@ -263,7 +277,14 @@ return function()
     end
 
     if recipe.machine == "craft" then
-      if not item_storage.load_all_from_chest(master.role_to_chest["craft"], task) then
+      local craft_chest = master.role_to_chest["craft"]
+      if not master.crafter or not craft_chest then
+        master.log.error("Crafter is not available")
+        task.status = "error"
+        task.status_message = "Crafter is not available"
+        return false
+      end
+      if not item_storage.load_all_from_chest(craft_chest, task) then
         return false
       end
       local max_crafts_per_use = total_use_count
@@ -287,20 +308,20 @@ return function()
       while use_count_left > 0 do
         local current_use_count = math.min(use_count_left, max_crafts_per_use)
         for i, stack in pairs(recipe.from) do
-          if not item_storage.load_to_chest(master.role_to_chest["craft"], i + 2, stack[2], stack[1] * current_use_count) then
+          if not item_storage.load_to_chest(craft_chest, i + 2, stack[2], stack[1] * current_use_count) then
             master.log.error("storage.load_to_chest unexpectedly failed")
             task.status = "error"
             task.status_message = "Unexpected error"
             return false
           end
         end
-        if not master.crafter then
-          master.log.error("Crafter is not available")
+        master.log.info("Calling crafter")
+        if not master.crafter.craft(one_craft_output * current_use_count) then
+          master.log.error("Crafter error.")
           task.status = "error"
-          task.status_message = "Crafter is not available"
+          task.status_message = "Crafter error"
           return false
         end
-        master.crafter.craft(one_craft_output * current_use_count)
         use_count_left = use_count_left - current_use_count
       end
     else
@@ -324,6 +345,7 @@ return function()
     task.status_message = "Waiting for output"
     task.prepared = true
     task.expected_count = task.count
+    return true
   end
 
   function crafting.craft_one(task)
@@ -352,6 +374,42 @@ return function()
       return false
     end
   end
+
+  function crafting.set_all_recipes(item_id, data)
+    fser.save(recipes_path(item_id), data)
+  end
+
+  function crafting.forget_item(item_id)
+    for _, id in ipairs(crafting.all_craftable_ids()) do
+      local any_changed = false
+      local data = crafting.get_recipes(id)
+      local new_data = {}
+      for _, recipe in ipairs(data) do
+        local recipe_ok = true
+        for _, stack in ipairs(recipe.from) do
+          if stack[1] > 0 and stack[2] == item_id then
+            recipe_ok = false
+            break
+          end
+        end
+        for _, stack in ipairs(recipe.to) do
+          if stack[1] > 0 and stack[2] == item_id then
+            recipe_ok = false
+            break
+          end
+        end
+        if recipe_ok then
+          table.insert(new_data, recipe)
+        else
+          any_changed = true
+        end
+      end
+      if any_changed then
+        crafting.set_all_recipes(id, new_data)
+      end
+    end
+  end
+
 
   function crafting.craft_incomplete_recipe(task)
     if task.prepared then
@@ -384,6 +442,23 @@ return function()
       load_items_into_machine(task.recipe, 1, task)
       task.output = {}
       return false
+    end
+  end
+
+  function crafting.get_incomplete_recipe(task)
+    local recipe = task.recipe
+    recipe.to = {}
+    local any = false
+    for id, count in pairs(task.output) do
+      if count > 0 then
+        table.insert(recipe.to, {count, id})
+        any = true
+      end
+    end
+    if any then
+      return true, recipe
+    else
+      return false, "Recipe has no output."
     end
   end
 

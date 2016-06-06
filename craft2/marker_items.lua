@@ -17,7 +17,7 @@ function marker_items.stack_to_chest_role(stack)
     return "Roller"
   elseif stack.label == "Dense Iron Plate" then
     return "Compressor"
-  elseif stack.label == "Iron Coin" then
+  elseif stack.label == "Coal" then
     return "Furnace"
   elseif stack.label == "Rubber" then
     return "Extractor"

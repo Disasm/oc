@@ -13,6 +13,7 @@ return function()
 
   function item_db.istack_to_string(istack)
     if istack[1] > 0 then
+      print("test "..tostring(istack[1]).."|"..tostring(istack[2]))
       return string.format("%d x %s", istack[1], item_db.get(istack[2]).label)
     else
       return "empty"
@@ -76,6 +77,15 @@ return function()
       last_id = id
       fser.save(db_last_id_path, last_id)
     end
+  end
+
+  function item_db.remove(id)
+    local stack = item_db.get(id)
+    local hash = item_db.item_hash(stack)
+    filesystem.remove(path_from_id(id))
+    filesystem.remove(path_from_item_hash(hash))
+    data_cache[id] = nil
+    hash_to_id_cache[hash] = nil
   end
 
   function item_db.add(data)

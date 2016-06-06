@@ -131,6 +131,27 @@ return function()
   function rpc_interface.remove_recipe(item_id, recipe_index)
     crafting.remove_recipe(item_id, recipe_index)
   end
+  function rpc_interface.forget_item(item_id)
+    crafting.forget_item(item_id)
+    local_item_database.remove(item_id)
+    for _, d in ipairs(remote_databases) do
+      d.remove(item_id)
+    end
+    return new_id
+  end
+  function rpc_interface.get_current_new_recipe()
+    for i, task in ipairs(master.tasks) do
+      if task.name == "craft_incomplete" then
+        local recipe_ok, recipe = crafting.get_incomplete_recipe(task)
+        if recipe_ok then
+          return "Current recipe: " .. crafting.recipe_readable(recipe)
+        else
+          return "Current recipe is not ready: " .. recipe
+        end
+      end
+    end
+    return "Current recipe is not registered yet."
+  end
 
   function master.on_chest_failure(chest1, chest2)
     l.warn("Chest failure!")
@@ -258,28 +279,21 @@ return function()
           for i, task in ipairs(master.tasks) do
             if task.name == "craft_incomplete" then
               if cmd.accept then
-                local recipe = task.recipe
-                recipe.to = {}
-                local any = false
-                for id, count in pairs(task.output) do
-                  if count > 0 then
-                    table.insert(recipe.to, {count, id})
-                    any = true
-                  end
-                end
-                if any then
+                local recipe_ok, recipe = crafting.get_incomplete_recipe(task)
+                if recipe_ok then
                   for id, count in pairs(task.output) do
                     if count > 0 then
                       crafting.add_recipe(id, recipe)
                     end
                   end
+                  table.remove(master.tasks, i)
                 else
-                  l.error("Recipe has no output.")
+                  l.error(recipe)
                 end
               else
                 l.info("Recipe is discarded.")
+                table.remove(master.tasks, i)
               end
-              table.remove(master.tasks, i)
               break
             end
           end

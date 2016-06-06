@@ -71,7 +71,13 @@ function inputItem(options)
     else
       item.color = 0x30ff30
     end
-    item.label = s.label.." ("..count..")"
+    item.label = s.label
+    if not options.hideCount then
+      item.label = item.label.." ("..count..")"
+    end
+    if options.showName then
+      item.label = item.label.." ["..s.name.."]"
+    end
     table.insert(menu_items, item)
   end
   local _, item = input2.show_number_menu("Select item", menu_items)
@@ -112,8 +118,14 @@ function cleanIncoming()
 end
 
 function viewRecipes()
-  local id, count, stack = inputItem({ onlyPresent = false, hasCount = false })
+  local id, count, stack = inputItem({ onlyPresent = false, hasCount = false, hideCount = true, showName = true })
   if not id then return end
+  local function forgetItem()
+    input2.confirm("[DANGER] Forget this item and all related recipes?", function()
+      master.forget_item(id)
+      return true
+    end)
+  end
 
   local function main()
     local strings = master.get_recipes_strings(id)
@@ -128,7 +140,7 @@ function viewRecipes()
         if n == nil then
           return
         end
-        print(string.format("Are you sure you want to delete this recipe?"))
+        print("Are you sure you want to delete this recipe?")
         print(strings[n])
         input2.confirm(nil, function()
           master.remove_recipe(id, n)
@@ -137,9 +149,13 @@ function viewRecipes()
       end
       input2.show_char_menu("Recipe actions", {
         { char="r", label="Remove recipe", fn=removeRecipe },
+        { char="f", label="Forget item", fn=forgetItem },
       })
     else
       print(string.format("No recipes for %s.", stack.label))
+      input2.show_char_menu("Recipe actions", {
+        { char="f", label="Forget item", fn=forgetItem },
+      })
     end
 
   end
@@ -156,11 +172,27 @@ string_lpad = function(str, len, char)
   return str .. string.rep(char, len - #str)
 end
 
+local function commitRecipe()
+  local function refresh()
+    print(master.get_current_new_recipe())
+  end
+  local function commit(ok)
+    master_enqueue({ action="commit_recipe", accept=ok })
+  end
+  refresh()
+  input2.show_char_menu("Wait for the output!", {
+    { char="a", label="Accept recipe", fn=function() commit(true); return true end  },
+    { char="d", label="Discard recipe", fn=function() commit(false); return true end  },
+    { char="r", label="Refresh", fn=refresh },
+  })
+end
+
 function addRecipe()
   local machines = {}
   for name, _ in pairs(master.get_craft_machines()) do
     table.insert(machines, { label = name })
   end
+  table.sort(machines, function(a, b) return a.label < b.label end)
   local _, action = input2.show_number_menu("Select machine", machines)
   local machine = action.label
   local is_craft = (machine == "craft")
@@ -168,14 +200,16 @@ function addRecipe()
   local function printStacks()
     print("")
     if is_craft then
+      local print_buffer = ""
       for i = 1, 9 do
         local s = ""
         if stacks[i] then
           s = item_db.istack_to_string(stacks[i])
         end
-        io.write(string_lpad(string.format("[%d] %s", i, s), 20))
+        print_buffer = print_buffer .. string_lpad(string.format("[%d] %s", i, s), 20)
         if i % 3 == 0 then
-          io.write("\n")
+          print(print_buffer)
+          print_buffer = ""
         end
       end
     else
@@ -233,9 +267,6 @@ function addRecipe()
     end
     printStacks()
   end
-  local function commit(ok)
-    master_enqueue({ action="commit_recipe", accept=ok })
-  end
   local function save()
     master_enqueue({
       action="add_task",
@@ -247,10 +278,7 @@ function addRecipe()
         }
       }
     })
-    input2.show_char_menu("Wait for the output!", {
-      { char="a", label="Accept recipe", fn=function() commit(true); return true end  },
-      { char="d", label="Discard recipe", fn=function() commit(false); return true end  },
-    }, { no_quit=true })
+    commitRecipe()
   end
   input2.show_char_menu("Recipe editor", {
     { char="a", label="Add item", fn=add },
@@ -263,6 +291,7 @@ function recipesMenu()
   input2.show_char_menu("Recipes", {
     { char="v", label="View recipes", fn=viewRecipes },
     { char="a", label="Add recipe", fn=addRecipe },
+    { char="c", label="Commit new recipe", fn=commitRecipe },
   })
 end
 
