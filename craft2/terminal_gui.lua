@@ -184,16 +184,18 @@ local function commitRecipe()
     { char="a", label="Accept recipe", fn=function() commit(true); return true end  },
     { char="d", label="Discard recipe", fn=function() commit(false); return true end  },
     { char="r", label="Refresh", fn=refresh },
+    { char="i", label="Clean incoming", fn=cleanIncoming },
   })
 end
 
-function addRecipe()
+local function addRecipe()
   local machines = {}
   for name, _ in pairs(master.get_craft_machines()) do
     table.insert(machines, { label = name })
   end
   table.sort(machines, function(a, b) return a.label < b.label end)
   local _, action = input2.show_number_menu("Select machine", machines)
+  if not action then return end
   local machine = action.label
   local is_craft = (machine == "craft")
   local stacks = {}
@@ -279,15 +281,17 @@ function addRecipe()
       }
     })
     commitRecipe()
+    printStacks()
   end
   input2.show_char_menu("Recipe editor", {
     { char="a", label="Add item", fn=add },
     { char="r", label="Remove item", fn=rem },
     { char="s", label="Save", fn=save },
+    { char="c", label="Clear", fn=function() addRecipe(); return true end },
   })
 end
 
-function recipesMenu()
+local function recipesMenu()
   input2.show_char_menu("Recipes", {
     { char="v", label="View recipes", fn=viewRecipes },
     { char="a", label="Add recipe", fn=addRecipe },
@@ -295,7 +299,7 @@ function recipesMenu()
   })
 end
 
-function killTask()
+local function killTask()
   print("Enter task ID (enter to cancel):")
   local id = input.getNumber()
   if id == nil then
@@ -304,7 +308,7 @@ function killTask()
   master_enqueue({action="remove_task", task_id=id})
 end
 
-return function(master_interface)
+return function(master_interface, is_local_terminal)
   local isEmulator = require("libs/emulator").isEmulator
   if not isEmulator then
     master = master_interface
@@ -326,6 +330,6 @@ return function(master_interface)
     { char="u", label="Update", fn=function() shell.execute("up") end },
     { char="b", label="Reboot master server", fn=function() master_enqueue({action="quit", reboot=true}) end },
     { char="r", label="Manage recipes", fn=recipesMenu },
-  })
+  }, { no_quit = is_local_terminal })
 
 end

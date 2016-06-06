@@ -38,10 +38,14 @@ function updateTaskList(tasks)
       local stack = item_db.get(task.item_id)
 
       local count = task.count or 0
-      local count_left = task.count_left or count
 
       s = s.." "..count.." x "..stack.label
-      if count_left ~= count then
+      if task.expected_output then
+        local count_left
+        for item_id, count in pairs(task.expected_output) do
+          count_left = count
+          break
+        end
         s = s .. ", left "..count_left
       end
     end
@@ -126,13 +130,15 @@ return function(master_interface)
     rpc.bind(wrapper)
   end
   print("Welcome to Craft 2 terminal")
+  local is_local_terminal = true
   if not master_interface then
+    is_local_terminal = false
     local rpc = require("libs/rpc3")
     local hosts_ok, hosts = pcall(require, "hosts")
     if not hosts_ok then hosts = {} end
     master_interface = rpc.connect(hosts.master, { timeout = 15 })
   end
 
-  event.timer(1, function() require("craft2/terminal_gui")(master_interface) end)
+  event.timer(1, function() require("craft2/terminal_gui")(master_interface, is_local_terminal) end)
   return wrapper
 end

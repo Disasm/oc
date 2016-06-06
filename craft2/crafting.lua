@@ -218,32 +218,39 @@ return function()
     return r
   end
 
-  function crafting.craft_all(task)
-    local ok, _, crafts = emulate_craft({task.count, task.item_id})
-    if ok then
-      --master.log.warn("Emulation OK")
-      crafts = merge_crafts(crafts)
-    else
-      --master.log.warn("Emulation failed")
-      return false
+  function crafting.craft_all_multiple(istacks, priority)
+    local reservation
+    local all_crafts = {}
+    for _, stack in pairs(istacks) do
+      local ok, new_reservation, crafts = emulate_craft(stack, reservation)
+      if not ok then
+        return false
+      end
+      reservation = new_reservation
+      for _, craft in ipairs(crafts) do
+        table.insert(all_crafts, craft)
+      end
     end
-
-    for _, craft in pairs(crafts) do
+    all_crafts = merge_crafts(all_crafts)
+    for _, craft in pairs(all_crafts) do
       local istack = craft[1]
       local recipe_index = craft[2]
       master.add_task({
         name = "craft_one",
         item_id = istack[2],
         count = istack[1],
-        priority = task.priority,
+        priority = priority,
         recipe_index = recipe_index
       })
     end
     return true
   end
 
-  local function load_items_into_machine(recipe, count, task)
+  function crafting.craft_all(task)
+    return crafting.craft_all_multiple({ {task.count, task.item_id} }, task.priority)
+  end
 
+  local function load_items_into_machine(recipe, count, task)
     local one_craft_output = 0
     local total_use_count = 0
     if recipe.to then
@@ -289,8 +296,6 @@ return function()
       end
       local max_crafts_per_use = total_use_count
       local function check_max_craft(stack)
-        master.log.info("stack: " .. master.log.inspect(stack))
-        master.log.info("db data: " .. master.log.inspect(item_db.get(stack[2])))
         local stack_max_crafts = math.floor(max_stack(stack[2]) / stack[1])
         if max_crafts_per_use > stack_max_crafts then
           max_crafts_per_use = stack_max_crafts
@@ -344,20 +349,31 @@ return function()
     task.status = "waiting"
     task.status_message = "Waiting for output"
     task.prepared = true
-    task.expected_count = task.count
+    task.expected_output = {}
+    if recipe.to then
+      for _, istack in pairs(recipe.to) do
+        task.expected_output[istack[2]] = istack[1] * total_use_count
+      end
+    end
     return true
   end
 
   function crafting.craft_one(task)
     if task.prepared then
-      local ok, result = master.expect_machine_output({ [task.item_id]=task.expected_count })
+      local ok, result = master.expect_machine_output(task.expected_output)
       if result then
-        task.expected_count = task.expected_count - (result[task.item_id] or 0)
-        if task.expected_count == 0 then
+        for item_id, count in pairs(result) do
+          task.expected_output[item_id] = task.expected_output[item_id] - count
+        end
+        local any_left = false
+        for _, count in pairs(task.expected_output) do
+          if count > 0 then any_left = true end
+        end
+        if any_left then
+          return false
+        else
           master.log.info("Craft completed.")
           return true
-        else
-          return false
         end
       end
     else
@@ -410,8 +426,12 @@ return function()
     end
   end
 
-
   function crafting.craft_incomplete_recipe(task)
+    if not task.ingredients_craft_requested then
+      if crafting.craft_all_multiple(task.recipe.from) then
+        task.ingredients_craft_requested = true
+      end
+    end
     if task.prepared then
       local ok, result = master.expect_machine_output(nil)
       if result then
@@ -432,6 +452,13 @@ return function()
         end
       end
     else
+      for i, task2 in ipairs(master.tasks) do
+        if task2.name == "craft_one" then
+          task.status = "waiting"
+          task.status_message = "Waiting for other craftings to finish"
+          return false
+        end
+      end
       master.log.info(string.format("Crafting with new recipe"))
       local ok, result = master.expect_machine_output(nil)
       for id, count in pairs(result) do
@@ -446,7 +473,10 @@ return function()
   end
 
   function crafting.get_incomplete_recipe(task)
-    local recipe = task.recipe
+    local recipe = {}
+    for key, val in pairs(task.recipe) do
+      recipe[key] = val
+    end
     recipe.to = {}
     local any = false
     for id, count in pairs(task.output) do

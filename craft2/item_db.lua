@@ -13,7 +13,6 @@ return function()
 
   function item_db.istack_to_string(istack)
     if istack[1] > 0 then
-      print("test "..tostring(istack[1]).."|"..tostring(istack[2]))
       return string.format("%d x %s", istack[1], item_db.get(istack[2]).label)
     else
       return "empty"
@@ -28,9 +27,8 @@ return function()
   end
 
   local function path_from_item_hash(hash)
-    return db_path .. "by_hash/" .. hash
+    return db_path .. "by_hash/" .. string.gsub(hash, "/", "_")
   end
-
 
   local last_id = fser.load(db_last_id_path)
   if not last_id then
