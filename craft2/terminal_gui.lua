@@ -247,7 +247,7 @@ local function addRecipe()
   end
   printStacks()
   local function add()
-    local item_id, count = inputItem({ hasCount = false })
+    local item_id, count = inputItem({ hasCount = not is_craft })
     if not item_id then return end
     if is_craft then
       while true do
