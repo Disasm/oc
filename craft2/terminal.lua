@@ -14,6 +14,7 @@ local mainWindow
 local logWindow
 local taskWindow
 
+
 function updateTaskList(tasks)
   taskWindow:clear()
   for _,task in pairs(tasks) do

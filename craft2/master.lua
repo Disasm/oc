@@ -69,12 +69,14 @@ return function()
   function master.log.warn(text)
     master.log.message({ level = "warning", text = text })
   end
+  master.log.warning = master.log.warn
   function master.log.error(text)
     master.log.message({ level = "error", text = text })
   end
   function master.log.dbg(text)
     master.log.message({ level = "debug", text = text })
   end
+  master.log.debug = master.log.dbg
   local l = master.log
 
   local function add_stack_to_databases(stack)
@@ -254,8 +256,10 @@ return function()
   end
 
   local function tick()
+    l.dbg("Tick started")
     local is_ok, err = xpcall(function()
       while #pending_commands > 0 do
+        l.dbg("Processing pending command")
         local cmd = pending_commands[1]
         table.remove(pending_commands, 1)
         if cmd.action == "add_task" then
@@ -312,6 +316,7 @@ return function()
         end
       end
 
+      l.dbg("Sorting tasks")
       table.sort(master.tasks, function(a,b) return (a.priority or 0) > (b.priority or 0) end)
       local tasks_left = {}
       for i, task in ipairs(master.tasks) do
@@ -322,28 +327,37 @@ return function()
             master.notify(true)
           end
         else
+          l.dbg("Task is not completed on this tick.")
           table.insert(tasks_left, task)
         end
       end
       master.tasks = tasks_left
       send_tasks_if_changed()
+      l.dbg("Saving chests")
       for _, chest in ipairs(master.chests) do
         chest.save_cache()
       end
       if not master_is_quitting then
         event.timer(tick_interval, tick)
+        l.dbg("Tick is successful. New tick is scheduled.")
       end
     end, function(err)
+      l.dbg("Error handler is called with "..l.inspect(err))
       return { message = tostring(err), traceback = debug.traceback() }
     end)
     if not is_ok then
-      l.error("Error: "..err.message)
-      l.error(err.traceback)
-      if config.write_log then
-        log_file:write(err.traceback.."\n")
+      if type(err) == "string" then
+        l.error("Error: "..err)
+      else
+        l.error("Error: "..err.message)
+        l.error(err.traceback)
+        if config.write_log then
+          log_file:write(err.traceback.."\n")
+        end
       end
       if not master_is_quitting then
         event.timer(tick_interval_after_error, tick)
+        l.dbg("New tick is scheduled after a failure.")
       end
     end
   end

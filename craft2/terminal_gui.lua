@@ -188,6 +188,25 @@ local function commitRecipe()
   })
 end
 
+
+local function parseRecipeItem(data)
+  local result = {}
+  local str = 'one,two'
+  local regex_item = '([^ ]+)'
+  local regex_count = '(.+)x'
+  for item in string.gmatch(data, regex_item) do
+    local count_string = string.gmatch(item,  regex_count)()
+    if count_string then
+      table.insert(result, { count = tonumber(count_string),
+        slot = tonumber(string.sub(item, string.len(count_string)+2)) })
+    else
+      table.insert(result, { count = 1,
+        slot = tonumber(item) })
+    end
+  end
+  return result
+end
+
 local function addRecipe()
   local machines = {}
   for name, _ in pairs(master.get_craft_machines()) do
@@ -228,22 +247,48 @@ local function addRecipe()
   end
   printStacks()
   local function add()
-    local item_id, count = inputItem({ hasCount = true })
+    local item_id, count = inputItem({ hasCount = false })
     if not item_id then return end
     if is_craft then
       while true do
         printStacks()
-        print("Enter crafting slot (enter to cancel):")
-        local n = input.getNumber()
-        if n == nil then
-          printStacks()
+        print("Enter crafting slots and counts:")
+        print("(Type ? for a hint)")
+        local data = input.getString()
+        if data == "" then
           return
         end
-        if n < 1 or n > 9 then
-          print("Invalid crafting slot.")
+        if data == "?" then
+          print("Slots can be separated by spaces: '1 3 7 9'")
+          print("Each slot can have a count: '2x1 3x2'")
+          print("No count defaults to 1.")
         else
-          stacks[n] = { count, item_id }
-          print("Added.")
+          local r = parseRecipeItem(data)
+          if #r == 0 then
+            print("No items found.")
+          else
+            local all_ok = true
+            for _, item in ipairs(r) do
+              if not item.count or item.count < 1 then
+                print("Invalid count.")
+                all_ok = false
+                break
+              end
+              if not item.slot or item.slot < 1 or item.slot > 9 then
+                print("Invalid slot.")
+                all_ok = false
+                break
+              end
+            end
+            if all_ok then
+              for _, item in ipairs(r) do
+                stacks[item.slot] = { item.count, item_id }
+              end
+              print("Added.")
+              printStacks()
+              return
+            end
+          end
         end
       end
     else

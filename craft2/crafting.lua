@@ -123,7 +123,7 @@ return function()
   end
 
   local function emulate_craft(istack_check, reservation)
-
+    master.log.debug(string.format("emulate_craft(%s, %s)", master.log.inspect(istack_check), master.log.inspect(reservation)))
     if reservation == nil then
       reservation = {}
     else
@@ -140,6 +140,7 @@ return function()
       needed = needed - take
     end
     if needed == 0 then
+      master.log.debug("emulate_craft return (1)")
       return true, reservation, {}
     end
     istack_check = {needed, id}
@@ -190,10 +191,12 @@ return function()
       table.insert(current_crafts, craft)
 
       if ok then
+        master.log.debug("emulate_craft return (3)")
         return true, cloned_reservation, current_crafts
       end
     end
 
+    master.log.debug("emulate_craft return (4)")
     return false, reservation
   end
 
@@ -221,6 +224,7 @@ return function()
   function crafting.craft_all_multiple(istacks, priority)
     local reservation
     local all_crafts = {}
+    master.log.debug("Calling emulate_craft for each stack.")
     for _, stack in pairs(istacks) do
       local ok, new_reservation, crafts = emulate_craft(stack, reservation)
       if not ok then
@@ -231,7 +235,9 @@ return function()
         table.insert(all_crafts, craft)
       end
     end
+    master.log.debug("Merging crafts.")
     all_crafts = merge_crafts(all_crafts)
+    master.log.debug("Adding craft tasks.")
     for _, craft in pairs(all_crafts) do
       local istack = craft[1]
       local recipe_index = craft[2]
@@ -428,11 +434,14 @@ return function()
 
   function crafting.craft_incomplete_recipe(task)
     if not task.ingredients_craft_requested then
+      master.log.debug("Calling craft_all_multiple...")
       if crafting.craft_all_multiple(task.recipe.from) then
         task.ingredients_craft_requested = true
+        master.log.debug("craft_all_multiple is successful.")
       end
     end
     if task.prepared then
+      master.log.debug("Pulling machine output.")
       local ok, result = master.expect_machine_output(nil)
       if result then
         local any = false
@@ -452,6 +461,7 @@ return function()
         end
       end
     else
+      master.log.debug("Checking for other tasks.")
       for i, task2 in ipairs(master.tasks) do
         if task2.name == "craft_one" then
           task.status = "waiting"
@@ -473,6 +483,9 @@ return function()
   end
 
   function crafting.get_incomplete_recipe(task)
+    if not task.output then
+      return false, "Recipe has not been processed yet."
+    end
     local recipe = {}
     for key, val in pairs(task.recipe) do
       recipe[key] = val
