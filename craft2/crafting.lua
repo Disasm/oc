@@ -114,7 +114,7 @@ return function()
     return counts
   end
 
-  local function clone_reservation(reservation)
+  local function clone_table(reservation)
     local cloned = {}
     for k, v in pairs(reservation) do
       cloned[k] = v
@@ -122,12 +122,19 @@ return function()
     return cloned
   end
 
-  local function emulate_craft(istack_check, reservation)
-    master.log.debug(string.format("emulate_craft(%s, %s)", master.log.inspect(istack_check), master.log.inspect(reservation)))
+  local function emulate_craft(istack_check, reservation, old_ids)
+    master.log.debug(string.format("emulate_craft(%s, %s, %s)", master.log.inspect(istack_check), master.log.inspect(reservation), master.log.inspect(old_ids)))
     if reservation == nil then
       reservation = {}
     else
-      reservation = clone_reservation(reservation)
+      reservation = clone_table(reservation)
+    end
+
+    if old_ids == nil then
+      old_ids = {}
+    else
+      old_ids = clone_table(old_ids)
+      old_ids[istack_check[2]] = true
     end
 
     -- check for available items
@@ -147,6 +154,21 @@ return function()
 
     -- find related craft recipes
     local related_recipes = crafting.get_recipes(id)
+
+    local filtered_recipes = {}
+    for _, recipe in pairs(related_recipes) do
+      local remove_recipe = false
+      for _, istack in pairs(recipe.from) do
+        if old_ids[istack[2]] then
+          remove_recipe = true
+          break
+        end
+      end
+      if not remove_recipe then
+        table.insert(filtered_recipes, recipe)
+      end
+    end
+    related_recipes = filtered_recipes
 
     if #related_recipes == 0 then
       master.log.error(string.format("Missing items: %s", item_db.istack_to_string(istack_check)))
@@ -172,11 +194,11 @@ return function()
         ids[#ids+1] = id
       end
 
-      local cloned_reservation = clone_reservation(reservation)
+      local cloned_reservation = clone_table(reservation)
       local current_crafts = {}
       local ok = true
       for id, needed in pairs(items_from) do
-        local result, reservation2, crafts = emulate_craft({needed, id}, cloned_reservation)
+        local result, reservation2, crafts = emulate_craft({needed, id}, cloned_reservation, old_ids)
         cloned_reservation = reservation2
         if result == false then
           ok = false
