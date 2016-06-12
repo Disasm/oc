@@ -309,6 +309,11 @@ return function()
         return false
       end
     end
+    if task.count and task.item_id then
+      master.log.info(string.format("Crafting %s", item_db.istack_to_string({ task.count, task.item_id })))
+    else
+      master.log.info("Crafting unknown items");
+    end
 
     if recipe.machine == "craft" then
       local craft_chest = master.role_to_chest["craft"]
@@ -404,7 +409,6 @@ return function()
         end
       end
     else
-      master.log.info(string.format("Crafting %s", item_db.istack_to_string({ task.count, task.item_id })))
       local recipes = crafting.get_recipes(task.item_id)
       if task.recipe_index < 1 or task.recipe_index > #recipes then
         master.log.error(string.format("Invalid recipe index."))
