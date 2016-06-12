@@ -60,15 +60,19 @@ return function()
             end
           end
           if not max_score_chest then
-            task.status = "error"
-            task.status_message = "No available chests to store items!"
+            if task then
+              task.status = "error"
+              task.status_message = "No available chests to store items!"
+            end
             master.log.dbg("fail 1")
             return false
           end
           master.log.dbg(string.format("transfer from slot %d into chest %d", i, max_score_chest.id))
           if not source_chest.transfer_to(max_score_chest, stack[1], i, nil) then
-            task.status = "error"
-            task.status_message = "Transfer failed."
+            if task then
+              task.status = "error"
+              task.status_message = "Transfer failed."
+            end
             master.log.dbg("fail 2")
             return false
           end
