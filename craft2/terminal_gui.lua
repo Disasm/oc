@@ -353,6 +353,13 @@ local function killTask()
   master_enqueue({action="remove_task", task_id=id})
 end
 
+local function killAllTasks()
+  input2.confirm("[DANGER] Kill all tasks?", function()
+    master_enqueue({action="remove_all_tasks"})
+    return true
+  end)
+end
+
 return function(master_interface, is_local_terminal)
   local isEmulator = require("libs/emulator").isEmulator
   if not isEmulator then
@@ -372,6 +379,7 @@ return function(master_interface, is_local_terminal)
     { char="c", label="Get items or craft", fn=function() getItemsDialog(true) end },
     { char="i", label="Clean incoming", fn=cleanIncoming },
     { char="k", label="Kill task", fn=killTask },
+    { char="K", label="Kill all tasks", fn=killAllTasks },
     { char="u", label="Update", fn=function() shell.execute("up") end },
     { char="b", label="Reboot master server", fn=function() master_enqueue({action="quit", reboot=true}) end },
     { char="r", label="Manage recipes", fn=recipesMenu },

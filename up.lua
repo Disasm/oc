@@ -35,7 +35,7 @@ end
 
 local ev = table.pack(event.pull("key_up"))
 local username = ev[5]
-print("You are probably "..username)
+print("You are definitely "..username)
 local url
 if username == "Riateche" then
   url = "http://www.idzaaus.org/static/tmp/oc/"

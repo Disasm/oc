@@ -94,14 +94,14 @@ return function(master_interface)
 
   local w, h = gpu.getResolution()
   debugWidth = math.floor(w * 0.3)
-  logWindow = window.create(w - debugWidth+1, 1, debugWidth, h)
+  logWindow = window.create(w - debugWidth+1, 1, debugWidth, h - 2)
   logWindow:clear()
   local consoleHeight = math.floor(h * 0.5)
   --term.setViewport(w-debugWidth-1, consoleHeight, 0, 0)
-  mainWindow = window.create(1, 1, w-debugWidth-1, consoleHeight)
+  mainWindow = window.create(1, consoleHeight+2, w-debugWidth-1, h-consoleHeight-1)
   mainWindow:clear()
   _G.print = main_print
-  taskWindow = window.create(1, consoleHeight+2, w-debugWidth-1, h-consoleHeight-1)
+  taskWindow = window.create(1, 1, w-debugWidth-1, consoleHeight)
   taskWindow:clear()
 
   for i=1,w-debugWidth do
@@ -117,7 +117,7 @@ return function(master_interface)
     terminal = {
       set_tasks = function(tasks)
         updateTaskList(tasks)
-        debug_print("Tasks: "..inspect(tasks))
+--        debug_print("Tasks: "..inspect(tasks))
       end,
       log_message = function(obj)
         gpu.setForeground(obj.color)

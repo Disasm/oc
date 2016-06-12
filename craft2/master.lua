@@ -279,6 +279,9 @@ return function()
             l.error("Cannot remove task: task not found.")
           end
           send_tasks_if_changed()
+        elseif cmd.action == "remove_all_tasks" then
+          master.tasks = {}
+          send_tasks_if_changed()
         elseif cmd.action == "commit_recipe" then
           for i, task in ipairs(master.tasks) do
             if task.name == "craft_incomplete" then

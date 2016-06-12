@@ -304,9 +304,8 @@ return function()
     for _, id in pairs(ids) do
       if not counts[id] or counts[id] < required_counts[id] then
         local missing_stack = { required_counts[id] - (counts[id] or 0), id }
-        master.log.error(string.format("Missing required item: %s", item_db.istack_to_string(missing_stack)))
-        task.status = "error"
-        task.status_message = "Missing items"
+        task.status = "waiting"
+        task.status_message = string.format("Missing %s", item_db.istack_to_string(missing_stack))
         return false
       end
     end
@@ -477,7 +476,9 @@ return function()
           master.log.info("")
           master.log.info("Current craft output:")
           for id, count in pairs(task.output) do
-            master.log.info(item_db.istack_to_string({ count, id }))
+            if count ~= 0 then
+              master.log.info(item_db.istack_to_string({ count, id }))
+            end
           end
           master.log.info("")
         end

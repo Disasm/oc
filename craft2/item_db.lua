@@ -13,7 +13,8 @@ return function()
 
   function item_db.istack_to_string(istack)
     if istack[1] > 0 then
-      return string.format("%d x %s", istack[1], item_db.get(istack[2]).label)
+      local data = item_db.get(istack[2], true)
+      return string.format("%d x %s", istack[1], data and data.label or "[INVALID ID]")
     else
       return "empty"
     end
@@ -54,12 +55,18 @@ return function()
 
   local data_cache = {}
 
-  function item_db.get(id)
+  function item_db.get(id, allow_fail)
     if data_cache[id] then
       return data_cache[id]
     end
     local v = fser.load(path_from_id(id))
-    if not v then error("No such item: "..tostring(id), 2) end
+    if not v then
+      if allow_fail then
+        return nil
+      else
+        error("No such item: "..tostring(id), 2)
+      end
+    end
     data_cache[id] = v
     hash_to_id_cache[item_db.item_hash(v)] = id
     return v
