@@ -134,8 +134,8 @@ return function()
       old_ids = {}
     else
       old_ids = clone_table(old_ids)
-      old_ids[istack_check[2]] = true
     end
+    old_ids[istack_check[2]] = true
 
     -- check for available items
     local id = istack_check[2]
