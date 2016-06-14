@@ -188,7 +188,6 @@ local function commitRecipe()
   })
 end
 
-
 local function parseRecipeItem(data)
   local result = {}
   local str = 'one,two'
@@ -380,9 +379,10 @@ return function(master_interface, is_local_terminal)
     { char="i", label="Clean incoming", fn=cleanIncoming },
     { char="k", label="Kill task", fn=killTask },
     { char="K", label="Kill all tasks", fn=killAllTasks },
-    { char="u", label="Update", fn=function() shell.execute("up") end },
-    { char="b", label="Reboot master server", fn=function() master_enqueue({action="quit", reboot=true}) end },
     { char="r", label="Manage recipes", fn=recipesMenu },
+    { char="u", label="Update", fn=function() shell.execute("up") end },
+    { char="p", label="Toggle pause", fn= function() master.toggle_pause() end },
+    { char="b", label="Reboot master server", fn=function() master_enqueue({action="quit", reboot=true}) end },
   }, { no_quit = is_local_terminal })
 
 end

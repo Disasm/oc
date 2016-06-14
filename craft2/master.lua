@@ -107,6 +107,7 @@ return function()
       end
     end
   end
+  local is_paused = false
 
   local master_is_quitting = false
   local rpc_interface = {}
@@ -154,7 +155,6 @@ return function()
     end
     return "Current recipe is not registered yet."
   end
-
   function master.on_chest_failure(chest1, chest2)
     l.warn("Chest failure!")
     if chest1 then
@@ -255,7 +255,9 @@ return function()
     send_tasks_if_changed()
   end
 
+
   local function tick()
+    if is_paused then return end
     l.dbg("Tick started")
     local is_ok, err = xpcall(function()
       while #pending_commands > 0 do
@@ -362,6 +364,18 @@ return function()
         event.timer(tick_interval_after_error, tick)
         l.dbg("New tick is scheduled after a failure.")
       end
+    end
+  end
+
+  function rpc_interface.toggle_pause()
+    is_paused = not is_paused
+    if not is_paused then
+      event.timer(tick_interval, tick)
+    end
+    if is_paused then
+      l.info("Master is paused.")
+    else
+      l.info("Master is unpaused.")
     end
   end
 
