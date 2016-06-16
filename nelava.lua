@@ -5,7 +5,7 @@ local output_count = 15
 
 local function report_tank_levels()
   local list = {}
-  for i = 1, 3 do
+  for i = 1, 2 do
     table.insert(list, string.format("%d", robot.tankLevel(i)))
   end
   print(string.format("Levels: [ %s ]", table.concat(list, " | ")))
