@@ -6,4 +6,5 @@ return {
   content_cache = root.."content_cache/",
   topology = root.."topology",
   recipes = root.."recipes/",
+  log = root.."craft2.log"
 }

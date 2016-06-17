@@ -24,15 +24,17 @@ function updateTaskList(tasks)
       name = "Output"
     end
     if task.name == "craft" then
-      name = "Craft"
+      name = "Complex craft"
     end
     if task.name == "craft_one" then
-      name = "Simple craft"
+      name = "Craft"
     end
-    if task.status ~= nil then
-      if task.status == "error" then
-        color = 0xff3030
-      end
+    if task.status == "error" then
+      color = 0xff3030
+    elseif task.status == "waiting" then
+      color = 0xffff30
+    elseif task.status == "running" then
+      color = 0x30ff30
     end
     local s = task.id..":"..name
     if (task.name == "output") or (task.name == "craft") or (task.name == "craft_one") then
@@ -41,17 +43,22 @@ function updateTaskList(tasks)
       local count = task.count or 0
 
       s = s.." "..count.." x "..stack.label
-      if task.expected_output then
+      if task.expected_output and task.machine ~= "craft" then
         local count_left
         for item_id, count in pairs(task.expected_output) do
           count_left = count
           break
         end
-        s = s .. ", left "..count_left
+        local percents = 100 * (count - count_left) / count
+        if percents < 0 then percents = 0 end
+        percents = math.floor(percents + 0.5)
+        s = s .. string.format(", %d%% complete, LEFT: %d",
+          percents,
+          count_left)
       end
     end
     if task.status_message ~= nil then
-      s = s.." ("..task.status_message..")"
+      s = s..string.format(": %s", task.status_message)
     end
     local oldFg = gpu.setForeground(color)
     taskWindow:write(s)

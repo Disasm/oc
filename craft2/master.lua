@@ -214,6 +214,19 @@ return function()
   local tick_interval_after_error = 10
 
   local pending_machine_output = {}
+  master.load_machine_output = function()
+    l.dbg("Loading machine output")
+    for _, chest in ipairs(master.chests) do
+      if chest.role == "machine_output" then
+        local ok, result = item_storage.load_all_from_chest(chest)
+        if not ok then return false end
+        for id, count in pairs(result) do
+          pending_machine_output[id] = (pending_machine_output[id] or 0) + count
+        end
+      end
+    end
+  end
+
   master.expect_machine_output = function(expectations)
     local result = {}
     local all_ok = true
@@ -229,15 +242,7 @@ return function()
       end
     end
     if all_ok and expectations then return true, result end
-    for _, chest in ipairs(master.chests) do
-      if chest.role == "machine_output" then
-        local ok, result = item_storage.load_all_from_chest(chest)
-        if not ok then return false end
-        for id, count in pairs(result) do
-          pending_machine_output[id] = (pending_machine_output[id] or 0) + count
-        end
-      end
-    end
+    master.load_machine_output()
     if not expectations then
       for id, count in pairs(pending_machine_output) do
         result[id] = count
@@ -321,8 +326,8 @@ return function()
         end
       end
 
-      l.dbg("Sorting tasks")
-      table.sort(master.tasks, function(a,b) return (a.priority or 0) > (b.priority or 0) end)
+--      l.dbg("Sorting tasks")
+--      table.sort(master.tasks, function(a,b) return (a.priority or 0) > (b.priority or 0) end)
       local tasks_left = {}
       for i, task in ipairs(master.tasks) do
         l.dbg("Running task: "..l.inspect(task))
@@ -380,6 +385,13 @@ return function()
   end
 
   function master.run()
+    if config.write_log then
+      log_file = filesystem.open(require("craft2/paths").log, "a")
+      if not log_file then
+        error("can't open log file")
+      end
+    end
+
     l.info("Master is starting...")
     for _, host in ipairs(config.slaves or {}) do
       table.insert(remote_databases, rpc.connect(hosts[host]).item_database)
@@ -390,15 +402,9 @@ return function()
       table.insert(remote_terminals, v.terminal)
     end
     if config.crafter then
-      master.crafter = rpc.connect(hosts[config.crafter])
+      master.crafter = rpc.connect(hosts[config.crafter], { timeout = 20 })
     end
 
-    if config.write_log then
-      log_file = filesystem.open("/var/log/craft2.log", "a")
-      if not log_file then
-        error("can't open log file")
-      end
-    end
 
     l.dbg("Loading topology")
     local topology_data = fser.load(require("craft2/paths").topology)

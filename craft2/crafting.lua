@@ -10,6 +10,7 @@ return function()
   local fser = require("libs/file_serialization")
   local master = require("craft2/master")()
   local filesystem = require("filesystem")
+  local recipe_cache = {}
 
   local function recipes_path(id)
     return string.format("%s%d", paths.recipes, id)
@@ -62,10 +63,14 @@ return function()
   end
 
   function crafting.get_recipes(item_id)
+    if recipe_cache[item_id] then
+      return recipe_cache[item_id]
+    end
     local data = fser.load(recipes_path(item_id))
     if not data then
       data = {}
     end
+    recipe_cache[item_id] = data
     return data
   end
 
@@ -114,43 +119,40 @@ return function()
     return counts
   end
 
-  local function clone_table(reservation)
+  local function clone_table(t)
+    if not t then return {} end
     local cloned = {}
-    for k, v in pairs(reservation) do
+    for k, v in pairs(t) do
       cloned[k] = v
     end
     return cloned
   end
 
-  local function emulate_craft(istack_check, reservation, old_ids)
-    master.log.debug(string.format("emulate_craft(%s, %s, %s)", master.log.inspect(istack_check), master.log.inspect(reservation), master.log.inspect(old_ids)))
-    if reservation == nil then
-      reservation = {}
-    else
-      reservation = clone_table(reservation)
-    end
-
-    if old_ids == nil then
-      old_ids = {}
-    else
-      old_ids = clone_table(old_ids)
-    end
-    old_ids[istack_check[2]] = true
+  -- context: { istack_to_check, reservation, old_ids }
+  local function emulate_craft(context)
+    master.log.debug(string.format("emulate_craft(%s)", master.log.inspect(context)))
+    local new_context = {}
+    new_context.reservation = clone_table(context.reservation)
+    new_context.old_ids = clone_table(context.old_ids)
+    new_context.old_ids[context.istack_to_check[2]] = true
+    new_context.crafts = {}
+    new_context.errors = clone_table(context.errors)
 
     -- check for available items
-    local id = istack_check[2]
-    local needed = istack_check[1]
-    local counts = count_items({id}, reservation)
+    local id = context.istack_to_check[2]
+    local needed = context.istack_to_check[1]
+    local counts = count_items({id}, new_context.reservation)
     if counts[id] > 0 then
       local take = math.min(counts[id], needed)
-      reservation[id] = (reservation[id] or 0) + take
+      new_context.reservation[id] = (new_context.reservation[id] or 0) + take
       needed = needed - take
     end
     if needed == 0 then
       master.log.debug("emulate_craft return (1)")
-      return true, reservation, {}
+      new_context.ok = true
+      return new_context
     end
-    istack_check = {needed, id}
+    context.istack_to_check = {needed, id}
 
     -- find related craft recipes
     local related_recipes = crafting.get_recipes(id)
@@ -159,7 +161,7 @@ return function()
     for _, recipe in pairs(related_recipes) do
       local remove_recipe = false
       for _, istack in pairs(recipe.from) do
-        if old_ids[istack[2]] then
+        if new_context.old_ids[istack[2]] then
           remove_recipe = true
           break
         end
@@ -171,18 +173,20 @@ return function()
     related_recipes = filtered_recipes
 
     if #related_recipes == 0 then
-      master.log.error(string.format("Missing items: %s", item_db.istack_to_string(istack_check)))
-      return false, reservation, {}
+      table.insert(new_context.errors, (string.format("Missing items: %s", item_db.istack_to_string(context.istack_to_check))))
+      new_context.ok = false
+      return new_context
     end
 
+    local child_errors = {}
     for recipe_index, recipe in pairs(related_recipes) do
       local n = 0
       for _, istack in pairs(recipe.to) do
-        if istack[2] == istack_check[2] then
+        if istack[2] == context.istack_to_check[2] then
           n = n + istack[1]
         end
       end
-      n = math.ceil(istack_check[1] / n)
+      n = math.ceil(context.istack_to_check[1] / n)
 
       local items_from = {}
       for _, istack in pairs(recipe.from) do
@@ -194,32 +198,46 @@ return function()
         ids[#ids+1] = id
       end
 
-      local cloned_reservation = clone_table(reservation)
-      local current_crafts = {}
+      local child_context = {}
+      child_context.reservation = clone_table(new_context.reservation)
+      child_context.old_ids = new_context.old_ids
       local ok = true
+      new_context.crafts = {}
       for id, needed in pairs(items_from) do
-        local result, reservation2, crafts = emulate_craft({needed, id}, cloned_reservation, old_ids)
-        cloned_reservation = reservation2
-        if result == false then
-          ok = false
-        else
-          for _,v in pairs(crafts) do
-            current_crafts[#current_crafts+1] = v
+        child_context.istack_to_check = {needed, id}
+        --local result, reservation2, crafts
+        local child_result_context = emulate_craft(child_context)
+        child_context.reservation = child_result_context.reservation
+        for _, e in ipairs(child_result_context.errors) do
+          table.insert(child_errors, e)
+        end
+        if child_result_context.ok then
+          for _,v in pairs(child_result_context.crafts) do
+            table.insert(new_context.crafts, v)
           end
+        else
+          ok = false
         end
       end
 
-      local craft = {istack_check, recipe_index}
-      table.insert(current_crafts, craft)
+      local craft = {context.istack_to_check, recipe_index}
+      table.insert(new_context.crafts, craft)
 
       if ok then
         master.log.debug("emulate_craft return (3)")
-        return true, cloned_reservation, current_crafts
+        new_context.ok = true
+        new_context.reservation = child_context.reservation
+        return new_context
       end
     end
 
     master.log.debug("emulate_craft return (4)")
-    return false, reservation
+    new_context.ok = false
+    table.insert(new_context.errors, string.format("Can't craft %s (%s)",
+      item_db.istack_to_string(context.istack_to_check),
+      table.concat(child_errors, "; ")
+    ))
+    return new_context
   end
 
   local function merge_crafts(crafts)
@@ -243,17 +261,19 @@ return function()
     return r
   end
 
-  function crafting.craft_all_multiple(istacks, priority)
+  function crafting.craft_all_multiple(istacks, task)
     local reservation
     local all_crafts = {}
     master.log.debug("Calling emulate_craft for each stack.")
     for _, stack in pairs(istacks) do
-      local ok, new_reservation, crafts = emulate_craft(stack, reservation)
-      if not ok then
+      local r = emulate_craft({ istack_to_check = stack, reservation = reservation })
+      if not r.ok then
+        task.status = "error"
+        task.status_message = table.concat(r.errors, "; ")
         return false
       end
-      reservation = new_reservation
-      for _, craft in ipairs(crafts) do
+      reservation = r.reservation
+      for _, craft in ipairs(r.crafts) do
         table.insert(all_crafts, craft)
       end
     end
@@ -267,7 +287,7 @@ return function()
         name = "craft_one",
         item_id = istack[2],
         count = istack[1],
-        priority = priority,
+        priority = task and task.priority or 0,
         recipe_index = recipe_index
       })
     end
@@ -275,7 +295,7 @@ return function()
   end
 
   function crafting.craft_all(task)
-    return crafting.craft_all_multiple({ {task.count, task.item_id} }, task.priority)
+    return crafting.craft_all_multiple({ {task.count, task.item_id} }, task)
   end
 
   local function load_items_into_machine(recipe, count, task)
@@ -352,7 +372,7 @@ return function()
             return false
           end
         end
-        master.log.info("Calling crafter")
+        master.log.dbg("Calling crafter")
         if not master.crafter.craft(one_craft_output * current_use_count) then
           master.log.error("Crafter error.")
           task.status = "error"
@@ -360,6 +380,7 @@ return function()
           return false
         end
         use_count_left = use_count_left - current_use_count
+        master.load_machine_output()
       end
     else
       local machine_chest = master.role_to_chest[recipe.machine]
@@ -378,7 +399,7 @@ return function()
         end
       end
     end
-    task.status = "waiting"
+    task.status = "running"
     task.status_message = "Waiting for output"
     task.prepared = true
     task.expected_output = {}
@@ -404,7 +425,7 @@ return function()
         if any_left then
           return false
         else
-          master.log.info("Craft completed.")
+          master.log.info(string.format("Crafted: %s", item_db.istack_to_string({ task.count, task.item_id })))
           return true
         end
       end
@@ -416,6 +437,7 @@ return function()
       end
       local recipe_errors = {}
       local recipe = recipes[task.recipe_index]
+      task.machine = recipe.machine
 
       load_items_into_machine(recipe, task.count, task)
       return false
@@ -424,6 +446,7 @@ return function()
 
   function crafting.set_all_recipes(item_id, data)
     fser.save(recipes_path(item_id), data)
+    recipe_cache[item_id] = data
   end
 
   function crafting.forget_item(item_id)

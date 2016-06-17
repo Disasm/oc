@@ -108,8 +108,10 @@ return function(chest_id, chest_data)
   end
 
   function r.direct_transfer_to(other_chest, count, source_slot, sink_slot)
-    local previous_count = r.get_istack(source_slot)[1]
-    local target_count = previous_count - count
+    local previous_sink_count = other_chest.get_istack(sink_slot)[1]
+    -- local target_sink_count = previous_sink_count + count
+    --local previous_count = r.get_istack(source_slot)[1]
+    --local target_count = previous_count - count
     l.dbg(string.format("direct transfer %d.%d -> %d.%d", r.id, source_slot, other_chest.id, sink_slot))
     if r.id == other_chest.id then
       local t = r.main_transposer
@@ -126,8 +128,19 @@ return function(chest_id, chest_data)
     if other_chest.content_cache_enabled then
       other_chest.get_istack(sink_slot, true)
     end
-    l.dbg(string.format("target_count=%d result_count=%d", target_count, r.get_istack(source_slot)[1]))
-    return r.get_istack(source_slot)[1] == target_count
+    if other_chest.role == "Extruder" or
+       other_chest.role == "Roller" or
+       other_chest.role == "Compressor" or
+       other_chest.role == "Furnace" or
+       other_chest.role == "Extractor" or
+       other_chest.role == "Macerator" then
+      -- can't verify success
+      return count
+    else
+      local really_transfered_count = other_chest.get_istack(sink_slot)[1] - previous_sink_count
+      l.dbg(string.format("really_transfered_count: %d", really_transfered_count))
+      return really_transfered_count
+    end
   end
 
   function r.transfer_to(other_chest, count, source_slot, sink_slot)
@@ -137,31 +150,38 @@ return function(chest_id, chest_data)
       return false
     end
     local item_id = r.get_istack(source_slot)[2]
-    local current_source_count = r.get_istack(source_slot)[1]
-    if current_source_count == 0 then
-      l.warn("chest.transer_to: source stack is empty")
-      return false
-    end
+    local count_left_for_transfer = count
+--    local current_source_count = r.get_istack(source_slot)[1]
+--    if current_source_count == 0 then
+--      l.warn("chest.transer_to: source stack is empty")
+--      return false
+--    end
     local path = r.paths_to_chests[other_chest.id]
     if #path == 1 then path = { r.id, r.id } end
     local current_slot = source_slot
     for current_step = 1, (#path-1) do
       local current_chest = master.chests[path[current_step]]
       if current_step + 1 == #path then -- last step
-        local target_count_left = current_source_count - count
+        --local target_count_left = current_source_count - count
         local source_stack = current_chest.get_istack(current_slot)
-        l.dbg("source_stack: "..l.inspect(source_stack))
+        --l.dbg("source_stack: "..l.inspect(source_stack))
         -- l.dbg("original_source_stack: "..l.inspect(original_source_stack))
-        l.dbg(string.format("current %d.%d", current_chest.id, current_slot))
-        if source_stack[1] ~= current_source_count or source_stack[2] ~= item_id then
-          l.warn("chest.transer_to: stack is lost!")
-          master.on_chest_failure(current_chest)
-          return false
-        end
+        --l.dbg(string.format("current %d.%d", current_chest.id, current_slot))
+--        if source_stack[1] ~= current_source_count or source_stack[2] ~= item_id then
+--          l.warn("chest.transer_to: stack is lost!")
+--          master.on_chest_failure(current_chest)
+--          return false
+--        end
         local function try_final_transfer(slot)
-          current_chest.direct_transfer_to(other_chest, source_stack[1] - target_count_left, current_slot, slot)
-          source_stack = current_chest.get_istack(current_slot)
-          return (source_stack[1] == target_count_left)
+          l.dbg(string.format("try final transfer: count left: %d", count_left_for_transfer))
+          local direct_count = current_chest.direct_transfer_to(
+              other_chest, count_left_for_transfer, current_slot, slot)
+          count_left_for_transfer = count_left_for_transfer - direct_count
+          l.dbg(string.format("result: %d; count left: %d", direct_count, count_left_for_transfer))
+          if count_left_for_transfer ~= 0 then
+            source_stack = current_chest.get_istack(current_slot)
+          end
+          return count_left_for_transfer == 0
         end
 
         if sink_slot == nil then
@@ -190,7 +210,7 @@ return function(chest_id, chest_data)
         local next_chest_id = path[current_step + 1]
         local sink_chest = master.chests[next_chest_id]
         local result = current_chest.direct_transfer_to(sink_chest, count, current_slot, 1)
-        if not result then
+        if result ~= count then
           l.warn("chest.transer_to: intermediate transfer failed")
           l.warn(string.format("from: %d.%d", current_chest.id, current_slot))
           l.warn(string.format("to: %d.%d", sink_chest.id, 1))
@@ -198,7 +218,7 @@ return function(chest_id, chest_data)
           return false
         end
         current_slot = 1
-        current_source_count = count
+--        current_source_count = count
       end
     end
   end
