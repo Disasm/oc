@@ -181,8 +181,12 @@ function rpc.bind(obj, options)
       local func = bound_functions[request_data.function_id]
       local data = table.pack(pcall(func, table.unpack(request_data.args)))
       local is_ok = data[1]
-      table.remove(data, 1)
-      data.n = data.n - 1
+      if is_ok then
+        table.remove(data, 1)
+        data.n = data.n - 1
+      else
+        data = data[2] -- error message only
+      end
       respond(is_ok, data)
     end
   end
