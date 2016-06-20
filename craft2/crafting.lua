@@ -268,8 +268,13 @@ return function()
     for _, stack in pairs(istacks) do
       local r = emulate_craft({ istack_to_check = stack, reservation = reservation })
       if not r.ok then
-        task.status = "error"
-        task.status_message = table.concat(r.errors, "; ")
+        local message = table.concat(r.errors, "; ")
+        if task then
+          task.status = "error"
+          task.status_message = message
+        else
+          master.log.error(message)
+        end
         return false
       end
       reservation = r.reservation
@@ -478,6 +483,78 @@ return function()
         crafting.set_all_recipes(id, new_data)
       end
     end
+  end
+
+  local block_recipes
+  function crafting.detect_block_recipes()
+    block_recipes = fser.load(paths.content_cache .. "block_recipes")
+    if block_recipes then return end
+    master.log.info("Detecting block recipes...")
+    block_recipes = {}
+    for _, id in ipairs(crafting.all_craftable_ids()) do
+      for block_recipe_id, recipe in ipairs(crafting.get_recipes(id)) do
+        if recipe.machine == "craft" and recipe.from[1] then
+          local from_id = recipe.from[1][2]
+          local ok = true
+          for slot = 1, 9 do
+            if not recipe.from[slot] or recipe.from[slot][1] ~= 1 or recipe.from[slot][2] ~= from_id then
+              ok = false
+              break
+            end
+          end
+          if ok then
+            for _, recipe2 in ipairs(crafting.get_recipes(from_id)) do
+              if recipe2.machine == "craft" and
+                      recipe2.from[1] and
+                      recipe2.from[1][1] == 1 and
+                      recipe2.from[1][2] == id and
+                      recipe2.to[1] and
+                      recipe2.to[1][1] == 9 and
+                      recipe2.to[1][2] == from_id then
+                for slot = 2, 9 do
+                  if recipe2.from[slot] then
+                    ok = false
+                    break
+                  end
+                end
+                if ok then
+                  table.insert(block_recipes, { block = id, ingot = from_id, block_recipe_id = block_recipe_id })
+                  master.log.info(string.format("%s <-> %s",
+                    item_db.istack_to_string({ 1, id }),
+                    item_db.istack_to_string({ 9, from_id })
+                  ));
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+    master.log.info("Done")
+    fser.save(paths.content_cache .. "block_recipes", block_recipes)
+  end
+  function crafting.compactize_blocks()
+    local ingot_ids = {}
+    for _, item in ipairs(block_recipes) do
+      table.insert(ingot_ids, item.ingot)
+    end
+    local counts = item_storage.get_stored_item_counts(ingot_ids)
+    for _, item in ipairs(block_recipes) do
+      local count = counts[item.ingot] or 0
+      if count > 64 then
+        local block_count = math.ceil((count - 64)  / 9)
+        if block_count > 0 then
+          master.add_task({
+            name = "craft_one",
+            item_id = item.block,
+            count = block_count,
+            priority = 0,
+            recipe_index = item.block_recipe_id
+          })
+        end
+      end
+    end
+    return true
   end
 
   function crafting.craft_incomplete_recipe(task)

@@ -377,6 +377,7 @@ return function(master_interface, is_local_terminal)
     { char="g", label="Get items", fn=getItemsDialog },
     { char="c", label="Get items or craft", fn=function() getItemsDialog(true) end },
     { char="i", label="Clean incoming", fn=cleanIncoming },
+    { char="o", label="Optimize all", fn=function() master_enqueue({action="add_task", task={name="compactize_blocks"}}) end },
     { char="k", label="Kill task", fn=killTask },
     { char="K", label="Kill all tasks", fn=killAllTasks },
     { char="r", label="Manage recipes", fn=recipesMenu },

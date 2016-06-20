@@ -203,6 +203,8 @@ return function()
       return crafting.craft_one(task)
     elseif task.name == "craft_incomplete" then
       return crafting.craft_incomplete_recipe(task)
+    elseif task.name == "compactize_blocks" then
+      return crafting.compactize_blocks()
     else
       l.error("Unknown task")
       return true
@@ -447,6 +449,8 @@ return function()
     for _, chest in ipairs(master.chests) do
       chest.find_paths_to_other_chests()
     end
+
+    crafting.detect_block_recipes()
 
     if rpc.is_available then
       rpc.bind(rpc_interface)
