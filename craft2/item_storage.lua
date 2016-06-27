@@ -138,48 +138,77 @@ return function()
   end
 
   function item_storage.process_output_task(sink_chest, task)
-    if task.count_left == nil then
-      task.count_left = task.count
-    end
-
-    local real_count = item_storage.get_item_real_count(task.item_id)
-    local transfer_count = math.min(task.count_left, real_count)
-    if transfer_count > 0 then
-      local is_ok, msg = item_storage.load_to_chest(sink_chest, nil, task.item_id, transfer_count)
-      if is_ok then
-        task.count_left = task.count_left - transfer_count
-      else
-        task.status = "error"
-        task.status_message = msg
-        return false
-      end
-    end
-    if task.count_left == 0 then
-      return true
-    else -- not enough items
-      if crafting.has_recipe(task.item_id) then
-        if not task.craft_requested then
-          task.craft_requested = true
-          master.log.info(string.format("Requesting craft of %s", item_db.istack_to_string({ task.count_left, task.item_id })))
-          master.add_task({
-            name = "craft",
-            item_id = task.item_id,
-            count = task.count_left,
-            priority = task.priority
-          })
-          task.status = "waiting"
-          task.status_message = "Waiting for crafting"
-        end
-        return false
-      else
-        -- no crafting recipe
-        master.log.error(string.format("Not enough items. Missing: %s", item_db.istack_to_string({ task.count_left, task.item_id })))
-        master.log.error("Task is discarded.")
-        master.notify(false)
+    if task.counts_left == nil then
+      task.counts_left = {}
+      if #(task.items) == 0 then
+        l.error("Output task: no items requested.")
         return true
       end
+      for _, istack in ipairs(task.items) do
+        if istack[2] == nil then
+          l.error("Output task: invalid item id.")
+          return true
+        end
+        if istack[1] < 1 then
+          l.error("Output task: count is not positive enough.")
+          return true
+        end
+        task.counts_left[istack[2]] = istack[1]
+      end
     end
+    local all_completed = true
+    for item_id, count in pairs(task.counts_left) do
+      local real_count = item_storage.get_item_real_count(item_id)
+      local transfer_count = math.min(count, real_count)
+      if transfer_count > 0 then
+        local is_ok, msg = item_storage.load_to_chest(sink_chest, nil, item_id, transfer_count)
+        if is_ok then
+          task.counts_left[item_id] = task.counts_left[item_id] - transfer_count
+        else
+          task.status = "error"
+          task.status_message = msg
+          return false
+        end
+      end
+      if task.counts_left[item_id] > 0 then
+        all_completed = false
+      end
+    end
+    if all_completed then
+      return true
+    end
+    if not task.craft_requested then
+      task.craft_requested = true
+      local items = {}
+      for item_id, count in pairs(task.counts_left) do
+        if count > 0 then
+          if crafting.has_recipe(item_id) then
+            table.insert(items, { count, item_id })
+          else
+            -- no crafting recipe
+            master.log.error(string.format("Missing uncraftable items: %s", item_db.istack_to_string({ count, item_id })))
+            master.log.error("Task is discarded.")
+            master.notify(false)
+            return true
+          end
+        end
+      end
+      local texts = {}
+      for _, istack in ipairs(items) do
+        table.insert(texts, item_db.istack_to_string(istack))
+      end
+      master.log.info(string.format("Requesting craft of %s", table.concat(texts, ", ")))
+      master.add_task({
+        name = "craft",
+        items = items,
+        priority = task.priority
+      })
+      task.status = "waiting"
+      task.status_message = "Waiting for crafting"
+      return false
 
+    end
+    return false
   end
 
   return item_storage

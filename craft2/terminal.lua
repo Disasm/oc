@@ -38,11 +38,19 @@ function updateTaskList(tasks)
     end
     local s = task.id..":"..name
     if (task.name == "output") or (task.name == "craft") or (task.name == "craft_one") then
-      local stack = item_db.get(task.item_id)
+      local items
+      if task.name == "craft_one" then
+        items = { { task.count or 0, task.item_id } }
+      else
+        items = task.items
+      end
+      local texts = {}
+      for _, istack in ipairs(items) do
+        table.insert(texts, item_db.istack_to_string(istack))
+      end
+      local count = items[1][1]
 
-      local count = task.count or 0
-
-      s = s.." "..count.." x "..stack.label
+      s = s.." "..table.concat(texts, ", ")
       if task.expected_output and task.machine ~= "craft" then
         local count_left
         for item_id, count in pairs(task.expected_output) do
@@ -62,7 +70,9 @@ function updateTaskList(tasks)
     end
     local oldFg = gpu.setForeground(color)
     taskWindow:write(s)
-    gpu.setForeground(oldFg)
+    if oldFg then
+      gpu.setForeground(oldFg)
+    end
   end
 end
 

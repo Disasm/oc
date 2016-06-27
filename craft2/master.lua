@@ -184,21 +184,9 @@ return function()
         l.error("Output task: no outcoming chest!")
         return true
       end
-      if type(task.item_id) ~= "number" then
-        l.error("Output task: item_id is not a number!")
-        return true
-      end
-      if type(task.count) ~= "number" then
-        l.error("Output task: count is not a number!")
-        return true
-      end
-      if task.count < 1 then
-        l.error("Output task: count is not positive enough.")
-        return true
-      end
       return item_storage.process_output_task(master.role_to_chest["output"], task)
     elseif task.name == "craft" then
-      return crafting.craft_all(task)
+      return crafting.craft_all_multiple(task.items, task)
     elseif task.name == "craft_one" then
       return crafting.craft_one(task)
     elseif task.name == "craft_incomplete" then

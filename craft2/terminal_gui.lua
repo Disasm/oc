@@ -26,20 +26,27 @@ local print = function(...)
   end
 end
 
--- options: onlyPresent, hasCount
+-- options: onlyPresent, hasCount, hideCount, showName, colorFromCount, enableMultipleOption
 function inputItem(options)
   local ids
   local counts
+  local name_lower
   while true do
     print("Enter item name (empty to exit):")
+    if options.enableMultipleOption then
+      print("(input \"m\" to select multiple items)")
+    end
     local name = input.getString()
     if name == "" then
       return
     end
-
+    if options.enableMultipleOption and name == "m" then
+      return "multiple"
+    end
     ids = item_db.find_inexact(name)
-
-    counts = master.get_stored_item_counts(ids)
+    if options.colorFromCount or options.onlyPresent or not options.hideCount then
+      counts = master.get_stored_item_counts(ids)
+    end
     if options.onlyPresent then
       local i = 1
       while i <= #ids do
@@ -54,6 +61,7 @@ function inputItem(options)
     end
 
     if #ids > 0 then
+      name_lower = string.lower(name)
       break
     end
 
@@ -61,31 +69,42 @@ function inputItem(options)
   end
 
   local menu_items = {}
+  local exact_match
   for i = 1,#ids do
     local item = {}
     item.id = ids[i]
     local s = item_db.get(item.id)
-    local count = counts[item.id] or 0
-    if count == 0 then
+    if options.colorFromCount and (counts[item.id] or 0) == 0 then
       item.color = 0xffff30
     else
       item.color = 0x30ff30
     end
     item.label = s.label
     if not options.hideCount then
-      item.label = item.label.." ("..count..")"
+      item.label = item.label.." ("..(counts[item.id] or 0)..")"
     end
     if options.showName then
       item.label = item.label.." ["..s.name.."]"
     end
+    if string.lower(s.label) == name_lower then
+      exact_match = { id = item.id, stack = s, menu_item = item }
+    end
     table.insert(menu_items, item)
   end
-  local _, item = input2.show_number_menu("Select item", menu_items)
-  if item == nil then
-    return
+  local id, s
+  if exact_match then
+    print("AUTOMATICALLY SELECTED (exact match):")
+    input2.color_print(string.format("%s", exact_match.menu_item.label), exact_match.menu_item.color)
+    id = exact_match.id
+    s = exact_match.stack
+  else
+    local _, item = input2.show_number_menu("Select item", menu_items)
+    if item == nil then
+      return
+    end
+    id = item.id
+    s = item_db.get(id)
   end
-  local id = item.id
-  local s = item_db.get(id)
 
   local n
   if options.hasCount then
@@ -106,10 +125,65 @@ function inputItem(options)
   return id, n, s
 end
 
+function getMultipleItemsDialog(craftIfNeeded)
+  local stacks = {}
+  local function printStacks()
+    print("")
+    local any = false
+    for i, stack in pairs(stacks) do
+      print(string.format("[%d] %s", i, item_db.istack_to_string(stack)))
+      any = true
+    end
+    if not any then
+      print("No stack input yet.")
+    end
+    print("")
+  end
+  printStacks()
+  local function add()
+    local item_id, count = inputItem({ onlyPresent = not craftIfNeeded, hasCount = true, colorFromCount = true })
+    if not item_id then return end
+    local n = 1
+    while stacks[n] do
+      n = n + 1
+    end
+    stacks[n] = { count, item_id }
+    print("Added.")
+    printStacks()
+  end
+  local function rem()
+    print("Enter item number (enter to cancel):")
+    local n = input.getNumber()
+    if n then
+      table.remove(stacks, n)
+    end
+    printStacks()
+  end
+  local function save()
+    master_enqueue({
+      action="add_task",
+      task={
+        name = "output",
+        items = stacks
+      }
+    })
+  end
+  input2.show_char_menu("Items selector", {
+    { char="a", label="Add item", fn=add },
+    { char="r", label="Remove item", fn=rem },
+    { char="e", label="Execute", fn=function() save(); return true end },
+  })
+end
+
+
 function getItemsDialog(craftIfNeeded)
-  local id, n, s = inputItem({ onlyPresent = not craftIfNeeded, hasCount = true })
+  local id, n, s = inputItem({ onlyPresent = not craftIfNeeded, hasCount = true, colorFromCount = true, enableMultipleOption = true })
+  if id == "multiple" then
+    getMultipleItemsDialog(craftIfNeeded)
+    return
+  end
   if id ~= nil then
-    master_enqueue({action="add_task", task={name="output", item_id=id, count=n}})
+    master_enqueue({action="add_task", task={name="output", items = { { n, id} }}})
   end
 end
 
@@ -246,7 +320,7 @@ local function addRecipe()
   end
   printStacks()
   local function add()
-    local item_id, count = inputItem({ hasCount = not is_craft })
+    local item_id, count = inputItem({ hasCount = not is_craft, colorFromCount = true })
     if not item_id then return end
     if is_craft then
       while true do
@@ -330,7 +404,7 @@ local function addRecipe()
   input2.show_char_menu("Recipe editor", {
     { char="a", label="Add item", fn=add },
     { char="r", label="Remove item", fn=rem },
-    { char="s", label="Save", fn=save },
+    { char="e", label="Execute", fn=save },
     { char="c", label="Clear", fn=function() addRecipe(); return true end },
   })
 end

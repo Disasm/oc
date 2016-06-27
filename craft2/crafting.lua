@@ -299,9 +299,9 @@ return function()
     return true
   end
 
-  function crafting.craft_all(task)
-    return crafting.craft_all_multiple({ {task.count, task.item_id} }, task)
-  end
+--  function crafting.craft_all(task)
+--    return crafting.craft_all_multiple({ {task.count, task.item_id} }, task)
+--  end
 
   local function load_items_into_machine(recipe, count, task)
     local one_craft_output = 0
