@@ -1,18 +1,25 @@
 local event = require("event")
 local component = require("component")
-local nb
+
+
+local play_note = function(x) end
+
 if component.isAvailable("iron_noteblock") then
-  nb = component.iron_noteblock
-end
-
-local instrument = 5
-local volume = 1
-
-local function play_note(x)
-  if nb then
+  local nb = component.iron_noteblock
+  local instrument = 5
+  local volume = 1
+  play_note = function(x)
     nb.playNote(instrument, x, volume)
   end
 end
+
+if component.isAvailable("note_block") then
+  local nb = component.note_block
+  play_note = function(x)
+    nb.trigger(12 + x)
+  end
+end
+
 
 local notifications = {}
 
