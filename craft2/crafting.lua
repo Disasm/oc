@@ -155,10 +155,10 @@ return function()
     context.istack_to_check = {needed, id}
 
     -- find related craft recipes
-    local related_recipes = crafting.get_recipes(id)
+    local all_recipes = crafting.get_recipes(id)
 
-    local filtered_recipes = {}
-    for _, recipe in pairs(related_recipes) do
+    local related_recipes = {}
+    for recipe_index, recipe in pairs(all_recipes) do
       local remove_recipe = false
       for _, istack in pairs(recipe.from) do
         if new_context.old_ids[istack[2]] then
@@ -167,10 +167,9 @@ return function()
         end
       end
       if not remove_recipe then
-        table.insert(filtered_recipes, recipe)
+        related_recipes[recipe_index] = recipe
       end
     end
-    related_recipes = filtered_recipes
 
     if #related_recipes == 0 then
       table.insert(new_context.errors, (string.format("Missing items: %s", item_db.istack_to_string(context.istack_to_check))))
@@ -212,7 +211,7 @@ return function()
           table.insert(child_errors, e)
         end
         if child_result_context.ok then
-          for _,v in pairs(child_result_context.crafts) do
+          for _, v in pairs(child_result_context.crafts) do
             table.insert(new_context.crafts, v)
           end
         else
