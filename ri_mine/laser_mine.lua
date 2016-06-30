@@ -16,6 +16,9 @@ local ic = component.inventory_controller
 local function find_slot(name, allow_nil)
   for i = 1, slots_count do
     local stack = ic.getStackInInternalSlot(i)
+    if name == "empty" and stack == nil then
+      return i
+    end
     if stack and stack.name == names[name] then
       return i
     end
@@ -98,9 +101,9 @@ local function charge()
 end
 
 equip("laser")
-while true do 
+while true do
   robot.useUp()
-  
+
 end
 
 
