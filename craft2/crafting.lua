@@ -599,7 +599,7 @@ return function()
       local ok, result = master.expect_machine_output(nil)
       for id, count in pairs(result) do
         if count > 0 then
-          master.log.warn("Bad news: machine output was not empty.")
+          master.log.debug("Machine output was not empty.")
         end
       end
       load_items_into_machine(task.recipe, 1, task)
