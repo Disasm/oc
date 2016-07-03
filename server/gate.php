@@ -25,7 +25,11 @@ $root_folder = dirname(__FILE__);
 $files_root = $root_folder.DIRECTORY_SEPARATOR."files".DIRECTORY_SEPARATOR;
 $action = $_GET["action"];
 if ($action == "list") {
+
   $names = explode(",", $_GET["names"]);
+  if ($_GET["names"] == "") {
+    $names = array();
+  }
   $results = array();
   foreach($names as $name) {
     $name = preg_replace('/[^a-zA-Z0-9-_\.\/]/', '', $name);
