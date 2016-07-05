@@ -93,11 +93,11 @@ local function do_update(global_names, auto_reboot)
   local hash_cache = fs.load(hash_cache_path) or {}
   local any_updated = false
   for _, item in ipairs(file_list) do
-    if not hash_cache[item.path] or item.hash ~= hash_cache[item.path] then
-      local local_path = map_to_local(item.path)
+    local local_path = map_to_local(item.path)
+    if not hash_cache[local_path] or item.hash ~= hash_cache[local_path] then
       print("Updating file: "..local_path)
       wget(config.gate .. "/files/" .. item.path, local_path)
-      hash_cache[item.path] = item.hash
+      hash_cache[local_path] = item.hash
       any_updated = true
     end
   end
