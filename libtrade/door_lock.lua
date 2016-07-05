@@ -1,17 +1,26 @@
 local component = require("component")
-local redstone = component.redstone
+local redstone = nil
 local sides = require("sides")
+
+local list = component.list("redstone")
+for k,v in pairs(list) do
+  redstone = component.proxy(k)
+end
 
 local lockSide = sides.left
 
 local lock = {}
 
 function lock.lock()
-  redstone.setOutput(lockSide, 15)
+  if redstone then
+    redstone.setOutput(lockSide, 15)
+  end
 end
 
 function lock.unlock()
-  redstone.setOutput(lockSide, 0)
+  if redstone then
+    redstone.setOutput(lockSide, 0)
+  end
 end
 
 return lock
