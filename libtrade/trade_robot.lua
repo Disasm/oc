@@ -1,4 +1,4 @@
-local rpc = require("rpc")
+local rpc = require("libs/rpc3")
 local robot = require("robot")
 local component = require("component")
 local tb = component.tractor_beam
@@ -26,17 +26,22 @@ function api.dropAll()
     end
   end
   robot.select(1)
-  while robot.suckDown() do
-    robot.dropUp()
+  for i=1,ic.getInventorySize(sides.down) do
+    if i~=2 then
+      ic.suckFromSlot(sides.down, i)
+      robot.dropUp()
+    end
   end
 end
 
 function api.getSample()
   local stack = nil
   for slot=1,ic.getInventorySize(chestSide) do
-    stack = ic.getStackInSlot(chestSide, slot)
-    if stack ~= nil then
-      break
+    if slot ~= 2 then
+      stack = ic.getStackInSlot(chestSide, slot)
+      if stack ~= nil then
+        break
+      end
     end
   end
   if stack ~= nil then

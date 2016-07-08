@@ -2,10 +2,10 @@ local emulator = require("emulator").isEmulator
 
 local api = {}
 if not emulator then
-  local rpc = require("rpc")
+  local rpc = require("rpc3")
   local hosts = require("hosts")
 
-  api = rpc.connect(hosts.robot, 5, 1)
+  api = rpc.connect(hosts.robot, {timeout=5, retries=1})
 else
   local file_serialization = require("file_serialization")
 
