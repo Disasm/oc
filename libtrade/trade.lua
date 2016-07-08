@@ -610,7 +610,7 @@ function main()
 
   clearScreen()
   while not quit do
-    local result, reason = pcall(mainLoop)
+    local result, reason = xpcall(mainLoop, function(err) return err..debug.traceback() end)
     if result == false then
       if emulator then
         if reason == "exit" then
