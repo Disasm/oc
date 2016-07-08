@@ -34,51 +34,59 @@ return function()
     return score
   end
 
+  function item_storage.load_from_chest(source_chest, source_slot, task, loaded_items)
+    if source_slot ~= 2 or allow_slot2 then
+      master.log.dbg("test1")
+      local stack = source_chest.get_istack(source_slot)
+      master.log.dbg("test2 "..master.log.inspect(stack))
+      if stack[1] > 0 then
+        master.log.dbg("stack[1] > 0")
+        local max_score = -1
+        local max_score_chest
+        for j, sink_chest in ipairs(master.chests) do
+          master.log.dbg("iterating: chest "..j)
+          if sink_chest.role == "storage" then
+            master.log.dbg("Calling score_for_adding_items")
+            local score = score_for_adding_items(stack, source_chest, sink_chest)
+            if score > max_score then
+              max_score = score
+              max_score_chest = sink_chest
+            end
+          end
+        end
+        if not max_score_chest then
+          if task then
+            task.status = "error"
+            task.status_message = "No available chests to store items!"
+          end
+          master.log.dbg("fail 1")
+          return false
+        end
+        master.log.dbg(string.format("transfer from slot %d into chest %d", source_slot, max_score_chest.id))
+        if not source_chest.transfer_to(max_score_chest, stack[1], source_slot, nil) then
+          if task then
+            task.status = "error"
+            task.status_message = "Transfer failed."
+          end
+          master.log.dbg("fail 2")
+          return false
+        end
+        loaded_items[stack[2]] = (loaded_items[stack[2]] or 0) + stack[1]
+      end
+    end
+    return true, loaded_items
+  end
 
   function item_storage.load_all_from_chest(source_chest, task)
     local loaded_items = {}
     local allow_slot2 = source_chest.role == "machine_output"
     for i = 1, source_chest.slots_count do
       master.log.dbg("Processing slot "..i)
-      if i ~= 2 or allow_slot2 then
-        master.log.dbg("test1")
-        local stack = source_chest.get_istack(i)
-        master.log.dbg("test2 "..master.log.inspect(stack))
-        if stack[1] > 0 then
-          master.log.dbg("stack[1] > 0")
-          local max_score = -1
-          local max_score_chest
-          for j, sink_chest in ipairs(master.chests) do
-            master.log.dbg("iterating: chest "..j)
-            if sink_chest.role == "storage" then
-              master.log.dbg("Calling score_for_adding_items")
-              local score = score_for_adding_items(stack, source_chest, sink_chest)
-              if score > max_score then
-                max_score = score
-                max_score_chest = sink_chest
-              end
-            end
-          end
-          if not max_score_chest then
-            if task then
-              task.status = "error"
-              task.status_message = "No available chests to store items!"
-            end
-            master.log.dbg("fail 1")
-            return false
-          end
-          master.log.dbg(string.format("transfer from slot %d into chest %d", i, max_score_chest.id))
-          if not source_chest.transfer_to(max_score_chest, stack[1], i, nil) then
-            if task then
-              task.status = "error"
-              task.status_message = "Transfer failed."
-            end
-            master.log.dbg("fail 2")
-            return false
-          end
-          loaded_items[stack[2]] = (loaded_items[stack[2]] or 0) + stack[1]
-        end
+      local r, new_loaded_items = item_storage.load_from_chest(source_chest, i, task, loaded_items)
+      if not r then
+        return false
       end
+      loaded_items = new_loaded_items
     end
     master.log.dbg("Loading items from chest succeeded.")
     return true, loaded_items

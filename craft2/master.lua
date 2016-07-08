@@ -18,6 +18,7 @@ return function()
   local crafting = require("craft2/crafting")()
   local computer = require("computer")
   local item_storage = require("craft2/item_storage")()
+  local trade_api = require("craft2/trade_api")()
 
 
   local remote_databases = {}
@@ -111,6 +112,7 @@ return function()
 
   local master_is_quitting = false
   local rpc_interface = {}
+  rpc_interface.trade_api = trade_api
   local pending_commands = {}
   function rpc_interface.enqueue_command(cmd)
     if master_is_quitting then
