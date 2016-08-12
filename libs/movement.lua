@@ -4,20 +4,36 @@ local component = require("component")
 local eeprom = component.proxy(component.list("eeprom")())
 local serialization = require("serialization")
 local os = require("os")
-local file_serialization = require("file_serialization")
+local _,file_serialization = pcall(require, "file_serialization")
+
+local m = {}
+m.storage = nil
 
 local stateFileName = "/position.dat"
 local state = nil
 
 local function saveState()
-    --s = serialization.serialize(state)
-    --eeprom.setLabel(s)
+  if m.storage == nil then
+    return
+  end
+  if m.storage == "eeprom" then
+    s = serialization.serialize(state)
+    eeprom.setLabel(s)
+  end
+  if m.storage == "hdd" then
     file_serialization.save(stateFileName, state)
+  end
 end
 
 local function loadState()
-    --local s = eeprom.getLabel()
-    --s = serialization.unserialize(s)
+  if m.storage == nil then
+    return
+  end
+  if m.storage == "eeprom" then
+    local s = eeprom.getLabel()
+    state = serialization.unserialize(s)
+  end
+  if m.storage == "hdd" then
     s = file_serialization.load(stateFileName)
     if type(s) == "table" and s.x ~= nil then
         state = s
@@ -31,6 +47,7 @@ local function loadState()
         }
         saveState()
     end
+  end
 end
 
 local function turnLeft()
@@ -128,8 +145,6 @@ local function gotoxz(x, z, dx0, dz0)
         gotoDir(dx0, dz0)
     end
 end
-
-local m = {}
 
 m.reset = function()
     state = {
