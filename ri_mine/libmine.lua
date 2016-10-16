@@ -21,6 +21,7 @@ libmine.item_names["lava_bucket"] = "minecraft:lava_bucket"
 libmine.item_names["stick"] = "minecraft:stick"
 libmine.item_names["stone_pickaxe"] = "minecraft:stone_pickaxe"
 libmine.item_names["stone_hammer"] = "exnihilo:hammer_stone"
+libmine.item_names["bucket"] = "minecraft:bucket"
 
 local slots_count = robot.inventorySize()
 local ic = component.inventory_controller
