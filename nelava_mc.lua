@@ -29,11 +29,22 @@ local side_output1 = sides.left
 local side_output2 = sides.right
 local side_world = sides.down
 
-for _, s in pairs({ side_one, side_reserve, side_output1, side_output2 }) do
-  if #transposer.getFluidInTank(s) == 0 then
-    error("tank is missing")
-  end
+if #transposer.getFluidInTank(side_one) == 0 then
+  error("tank 1 is missing")
 end
+if #transposer.getFluidInTank(side_reserve) == 0 then
+  error("tank R is missing")
+end
+if #transposer.getFluidInTank(side_output1) == 0 then
+  side_output1 = nil
+end
+if #transposer.getFluidInTank(side_output2) == 0 then
+  side_output2 = nil
+end
+if not side_output1 and not side_output2 then
+  error("no output tank")
+end
+
 transposer.transferFluid(side_world, side_one)
 transposer.transferFluid(side_one, side_reserve)
 if transposer.getFluidInTank(side_reserve)[1].amount == 0 then
@@ -50,6 +61,7 @@ function transfer(from, to, count)
 end
 
 function do_one(side_output)
+  if side_output == nil then return end
   while transposer.getFluidInTank(side_reserve)[1].amount < max_reserve do
     transfer(side_reserve, side_one, 1)
     transfer(side_one, side_world)
