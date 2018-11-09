@@ -6,6 +6,7 @@ local shell = require("shell")
 
 local server_urls = {}
 server_urls["Ri"] = "http://home.idzaaus.org:8000/"
+server_urls["disasm"] = "http://0.0.0.0:8000/"
 
 local function strip_filename(filename)
   pos = string.find(string.reverse(filename), "/")
