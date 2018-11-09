@@ -7,7 +7,7 @@ local os = require("os")
 local _,file_serialization = pcall(require, "file_serialization")
 
 local m = {}
-m.storage = nil
+m.storage = "eeprom"
 
 local stateFileName = "/position.dat"
 local state = nil
