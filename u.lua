@@ -6,6 +6,7 @@ local shell = require("shell")
 
 local server_urls = {}
 server_urls["Ri"] = "http://home.idzaaus.org:8000/"
+server_urls["disasm"] = "http://0.0.0.0:8000/"
 
 local function strip_filename(filename)
   pos = string.find(string.reverse(filename), "/")
@@ -37,6 +38,16 @@ local function download_file(library_file)
   file:close()
 end
 
+local function install_file(library_file)
+  if _G.updater.index[library_file] then
+    local path = "/home/" .. _G.updater.user_name .. "/" .. library_file
+    if not filesystem.exists(path) then
+      print("Installing "..library_file)
+      download_file(library_file)
+    end
+    end
+end
+
 if not _G.updater then
   _G.updater = {}
   _G.updater.standard_require = _G.require
@@ -45,13 +56,7 @@ if not _G.updater then
     if _G.updater.enabled then
       _G.require = _G.updater.standard_require
       local library_file = library .. ".lua"
-      if _G.updater.index[library_file] then
-        local path = "/home/" .. _G.updater.user_name .. "/" .. library_file
-        if not filesystem.exists(path) then
-          print("Installing "..library_file)
-          download_file(library_file)
-        end
-      end
+      install_file(library_file)
       _G.require = _G.updater.custom_require
     end
     return _G.updater.standard_require(library)
@@ -60,7 +65,7 @@ if not _G.updater then
 end
 
 argv = {...}
-if #argv ~= 1 then
+if #argv < 1 then
   error("program not specified")
 end
 
@@ -80,6 +85,9 @@ end
 
 local key_up_event = table.pack(event.pull("key_up"))
 _G.updater.user_name = key_up_event[5]
+if not server_urls[_G.updater.user_name] then
+  error("unknown user name")
+end
 
 local function download_index()
   local result = ""
@@ -128,6 +136,11 @@ env_file:close()
 
 _G.updater.enabled = true
 
-require(argv[1])
+local target_file = argv[1] .. ".lua"
+install_file(target_file)
+table.remove(argv, 1)
+local f = assert(loadfile("/home/" .. _G.updater.user_name .. "/" .. target_file))
+f(table.unpack(argv))
+
 restore_globals()
 
