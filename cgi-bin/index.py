@@ -5,14 +5,24 @@ import os
 import glob
 import fnmatch
 
+allowed_extensions = [".lua"]
+
 print("Content-type: text/plain\n")
 
-dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir))
+root_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir))
+
+def print_dir(dir):
+  for name in os.listdir(dir):
+    if name.startswith("."): continue
+    path = os.path.join(dir, name)
+    extension = os.path.splitext(name)[1]
+    if os.path.isdir(path):
+      print_dir(path)
+    elif extension in allowed_extensions:
+      relative_path = os.path.relpath(path, root_dir).replace("\\", "/")
+      time = int(round(os.path.getmtime(path)))
+      print("  [\"%s\"] = %d," % (relative_path, time))
 
 print("{")
-for root, dirnames, filenames in os.walk(dir):
-    for filename in fnmatch.filter(filenames, '*.lua'):
-        path = os.path.join(root, filename)
-        relative_path = os.path.relpath(path, dir).replace("\\", "/")
-        print("  [\"%s\"] = %d," % (relative_path, int(round(os.path.getmtime(path)))))
+print_dir(root_dir)
 print("}")
