@@ -32,16 +32,17 @@ robot = component.proxy(component.list("robot")())
 ic = component.proxy(component.list("inventory_controller")())
 craft = component.proxy(component.list("crafting")()).craft
 
+local get_side = sides.front
+local put_side = sides.down
+
 function clear()
   for i = 1, 16 do
     if robot.count(i) > 0 then
       robot.select(i)
-      robot.drop(sides.down)
+      robot.drop(put_side)
     end
   end
 end
-
-local side = sides.down
 
 function pull_items(slots, count, target_slot)
   robot.select(target_slot)
@@ -50,7 +51,7 @@ function pull_items(slots, count, target_slot)
     if required_count <= 0 then
       return true
     end
-    ic.suckFromSlot(side, slot, required_count)
+    ic.suckFromSlot(get_side, slot, required_count)
     required_count = count - robot.count(target_slot)
     if required_count <= 0 then
       return true
@@ -66,9 +67,9 @@ craft_table_slots = {1, 2, 3, 5, 6, 7, 9, 10, 11}
 function process()
   local counts = {}
   local slots = {}
-  local n = ic.getInventorySize(side)
+  local n = ic.getInventorySize(get_side)
   for i = 1, n do
-    local stack = ic.getStackInSlot(side, i)
+    local stack = ic.getStackInSlot(get_side, i)
     if stack then
       counts[stack.label] = (counts[stack.label] or 0) + stack.size
       if not slots[stack.label] then slots[stack.label] = {} end
@@ -91,7 +92,7 @@ function process()
         end
         robot.select(16)
         craft(craft_count)
-        robot.drop(sides.front)
+        robot.drop(put_side)
       end
     end
   end
