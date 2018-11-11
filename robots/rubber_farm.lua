@@ -1,25 +1,27 @@
 robot = require("robot")
 component = require("component")
 ic = component.inventory_controller
-magnet = component.tractor_beam
+--magnet = component.tractor_beam
 m = require("movement")
 sides = require("sides")
 
-m.reset()
+--m.reset()
 
 local maxHeight = 8
 
 
 local names = {}
 names["laser"]= "IC2:itemToolMiningLaser"
-names["treetap"]= "IC2:itemTreetapElectric"
-names["chainsaw"]= "IC2:itemToolChainsaw"
-names["bonemeal"]= "minecraft:dye"
+names["treetap"]= "IC2:itemTreetap" -- "IC2:itemTreetapElectric"
+names["chainsaw"]= "minecraft:iron_axe" -- "IC2:itemToolChainsaw"
+names["bonemeal"]= "Forestry:fertilizerCompound" -- "minecraft:dye"
 names["sapling"]= "IC2:blockRubSapling"
 names["bone"]= "minecraft:bone"
 names["mfe"]= "IC2:blockElectric"
 names["crystal"] = "IC2:itemBatCrystal"
 names["wrench"] = "IC2:itemToolWrenchElectric"
+names["shears"] = "minecraft:shears"
+names["rubber"] = "IC2:itemHarz"
 
 local slots_count = robot.inventorySize()
 
@@ -82,10 +84,37 @@ local function gather(slot)
     end
 end
 
+local function calcRubber()
+    local cnt = 0
+    for i=1,robot.inventorySize() do
+        if robot.count(i) > 0 then
+            local stack = ic.getStackInInternalSlot(i)
+            if stack and stack.name == names["rubber"] then
+                cnt = cnt + robot.count(i)
+            end
+        end
+    end
+    return cnt
+end
 
-function mineTower(x, z, tool)
+local function useTreetap()
+    equip("treetap")
+    if not robot.use() then
+        lastEquippedName = nil
+        equip("treetap")
+        return robot.use()
+    else
+        return true
+    end
+end
+
+
+function mineTower(x, z, isFinal)
     m.set_pos(x, z)
-    for i=1,maxHeight-1 do
+    m.set_dir(-x, -z)
+
+    equip("shears")
+    for i=1,maxHeight do
         while true do
             if robot.up() then
                 break
@@ -94,60 +123,54 @@ function mineTower(x, z, tool)
             os.sleep(0.4)
         end
     end
-    for i=1,maxHeight-1 do
-        while not robot.down() do
-            os.sleep(0.4)
-        end
-    end
-end
 
-function useTreetap(x, z)
-    m.set_pos(x, z)
-    m.set_dir(-x, -z)
-    
-    equip("treetap")
-    
     for i=1,maxHeight do
-        if robot.detect() then
-            robot.use()
-        end
-        while not robot.up() do
-            os.sleep(0.4)
-        end
-    end
-    for i=1,maxHeight do
+        print(i)
         while not robot.down() do
             os.sleep(0.4)
+        end
+        if robot.detect() then
+            local oldCount = calcRubber()
+            print("oldCount: "..oldCount)
+            if useTreetap() then
+                os.sleep(0.5)
+                local newCount = calcRubber()
+                print("newCount: "..oldCount)
+                if newCount ~= oldCount then
+                    print(""..(newCount-oldCount).." new rubber")
+                    oldCount = newCount
+                    
+                    for k=1,12 do
+                        useTreetap()
+
+                        os.sleep(0.5)
+                        local newCount = calcRubber()
+                        print("newCount: "..oldCount)
+                        if newCount ~= oldCount then
+                            print(""..(newCount-oldCount).." new rubber")
+                        end
+                        oldCount = newCount
+                    end
+                end
+            end
+        end
+        if isFinal then
+            equip("chainsaw")
+            robot.swing()
         end
     end
 end
 
 function mineTree()
-    local spiral = { {3, 2}, {2, 2}, {2, 3}, {2, 4}, {3, 4}, {4, 4}, {4, 3}, {4, 2}, {4, 1}, {3, 1}, {2, 1}, {1, 1}, {1, 2}, {1, 3}, {1, 4}, {1, 5}, {2, 5}, {3, 5}, {4, 5}, {5, 5}, {5, 4}, {5, 3}, {5, 2}, {5, 1} }
     equip("empty")
-    for _,v in pairs(spiral) do
-        local x = v[1] - 3
-        local z = v[2] - 3
-        mineTower(x, z)
-    end
-    useTreetap(0, -1)
+    mineTower(0, -1)
     m.set_pos(-1, -1)
-    useTreetap(-1, 0)
+    mineTower(-1, 0)
     m.set_pos(-1, 1)
-    useTreetap(0, 1)
+    mineTower(0, 1)
     m.set_pos(1, 1)
-    useTreetap(1, 0)
-    equip("chainsaw")
-    
-    m.set_pos(1, 0)
-    m.set_dir(-1, 0)
-    equip("chainsaw")
-    robot.swing()
-    
-    magnet.suck()
-    
-    mineTower(0, 0)
-    equip("empty")
+    mineTower(1, 0, true)
+    m.set_pos(1, -1)
 end
 
 function getItemCount(label)
@@ -160,10 +183,14 @@ function getItemCount(label)
             end
         end
     end
+    return count
 end
 
 function checkSaplings()
-    local saplingSlot = find_slot("sapling")
+    local saplingSlot = find_slot("sapling", true)
+    if saplingSlot == nil then
+        return false
+    end
     local s = ic.getStackInInternalSlot(saplingSlot)
     if s.label ~= "Rubber Tree Sapling" then
         return false
@@ -177,9 +204,12 @@ function checkSaplings()
 end
 
 function checkBoneMeal()
-    local boneMealSlot = find_slot("bonemeal")
+    local boneMealSlot = find_slot("bonemeal", true)
+    if boneMealSlot == nil then
+        return false
+    end
     local s = ic.getStackInInternalSlot(boneMealSlot)
-    if s.label ~= "Bone Meal" then
+    if s.label ~= "Fertilizer" then
         return false
     end
     
@@ -191,34 +221,36 @@ function checkBoneMeal()
         -- TODO: craft more
     end
     
-    return robot.count(boneMealSlot) > 2
+    return robot.count(boneMealSlot) > 5
 end
 
 function checkTools()
     local i = find_slot("chainsaw")
-    local s = ic.getStackInInternalSlot(i)
+    --[[local s = ic.getStackInInternalSlot(i)
     if s.charge < 1000 then
         print "Not enough energy in chainsaw"
         return false
-    end
+    end]]--
     
     i = find_slot("treetap")
-    s = ic.getStackInInternalSlot(i)
+    --[[s = ic.getStackInInternalSlot(i)
     if s.charge < 500 then
         print "Not enough energy in treetap"
         return false
-    end
+    end]]--
+    i = find_slot("shears")
     
     return true
 end
 
 function growTree()
+    equip("empty")
     if not checkSaplings() then
-        print "Not enough saplings"
+        print("Not enough saplings")
         return false
     end
     if not checkBoneMeal() then
-        print "Not enough bone meal"
+        print("Not enough bone meal")
         return false
     end
     if not checkTools() then
@@ -229,10 +261,19 @@ function growTree()
     m.set_dir(0, 1)
     
     equip("sapling")
-    robot.use(sides.down)
+    if not robot.use(sides.down) then
+        print("Can't grow tree")
+        return false
+    end
     
     equip("bonemeal")
-    robot.use()
+    if not robot.use() then
+        print("Can't use bone meal")
+        return false
+    end
+    while robot.use() do
+        os.sleep(0.4)
+    end
     
     equip("empty")
     
