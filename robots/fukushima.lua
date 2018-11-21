@@ -77,17 +77,23 @@ local function check_reactor_item(slot, item_type)
     error("Invalid item in reactor slot "..slot)
 end
 
-local condensator_slots = {1, 2, 3, 7, 8, 9}
-local fuel_slots = {4, 5, 6}
+local condensator_slots = {}
+local fuel_slots = {}
 
 local function check_reactor()
     print("Checking reactor...")
-    for i=1,#condensator_slots do
-        check_reactor_item(condensator_slots[i], "condensator")
+    for i=1,ic.getInventorySize(sides.front) do
+        local s = ic.getStackInSlot(sides.front, i)
+        if s ~= nil then
+            if s.name == names["condensator"] then
+                condensator_slots[#condensator_slots + 1] = i
+            end
+            if s.name == names["fuel"] then
+                fuel_slots[#fuel_slots + 1] = i
+            end
+        end
     end
-    for i=1,#fuel_slots do
-        check_reactor_item(fuel_slots[i], "fuel")
-    end
+    print("Found "..#condensator_slots.." condensators and "..#fuel_slots.." fuel")
 end
 
 local function safe_check_reactor()
