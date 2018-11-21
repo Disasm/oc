@@ -180,18 +180,16 @@ local function cycle()
 end
 
 check_reactor()
-check_wrench()
+--check_wrench()
 check_redstone()
 print("Checks passed, you can start reactor now...")
 
 while true do
     if event.pull(1, "interrupted") then
-        robot.use()
         return
     end
     local r, e = pcall(cycle)
     if not r then
-        robot.use()
         print("Error: "..tostring(e))
         return
     end
