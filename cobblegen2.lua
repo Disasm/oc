@@ -43,56 +43,28 @@ local function move(str)
   end
 end
 
-local function do_craft()
-  move("dd")
-  local down_inventory_size = ic.getInventorySize(sides.down)
-  while true do
-    for i = 1, 11 do
-      if i ~= 4 and i ~= 8 then
-        for j = 1, down_inventory_size do
-          if robot.count(i) == 64 then
-            break
-          end
-          robot.select(i)
-          ic.suckFromSlot(sides.down, j, 64 - robot.count(i))
-        end
-        if robot.count(i) < 64 then
-          move("uu")
-          return
-        end
-      end
-    end
-    robot.select(16)
-    crafting.craft(64)
-    move("ll")
-    if not robot.drop() then
-      print("drop failed")
-    end
-    move("ll")
-  end
-  move("uu")
-end
 
 local function charge()
+  move("ulf")
   local mfe_charge_slot = 1
+  local mfe_side = sides.front
   robot.select(4)
   ic.equip()
-  while not ic.dropIntoSlot(sides.up, mfe_charge_slot) do end
-  local charge = ic.getStackInSlot(sides.up, mfe_charge_slot).charge
-  do_craft()
+  while not ic.dropIntoSlot(mfe_side, mfe_charge_slot) do end
+  local charge = ic.getStackInSlot(mfe_side, mfe_charge_slot).charge
   while true do
-    local new_charge = ic.getStackInSlot(sides.up, mfe_charge_slot).charge
+    local new_charge = ic.getStackInSlot(mfe_side, mfe_charge_slot).charge
     if new_charge == charge then
       break
     end
     charge = new_charge
   end
   robot.select(4)
-  ic.suckFromSlot(sides.up, mfe_charge_slot)
+  ic.suckFromSlot(mfe_side, mfe_charge_slot)
   ic.equip()
+  move("brd")
 end
 
-do_craft()
 while true do
   if not robot.use() then
     charge()
