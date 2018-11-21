@@ -1,3 +1,4 @@
+local sides = require('sides')
 local event = require('event')
 local robot = require("robot")
 local computer = require('computer')
@@ -10,11 +11,27 @@ names["wrench"] = "ic2:electric_wrench"
 names["condensator"] = "ic2:rsh_condensator"
 names["fuel"] = "ic2:quad_uranium_fuel_rod"
 names["redstone"] = "minecraft:redstone"
+names["redstone_block"] = "minecraft:redstone_block"
 
 local function find_slot(item_type)
     for i=1,robot.inventorySize() do
         local stack = ic.getStackInInternalSlot(i)
         if stack and stack.name == names[item_type] then
+            return i
+        end
+    end
+end
+
+local first_free_slot = nil
+local function find_free_slot()
+    if find_free_slot ~= nil then
+        if robot.count(first_free_slot) == 0 then
+            return first_free_slot
+        end
+    end
+    for i=12,robot.inventorySize() do
+        if robot.count(i) == 0 then
+            first_free_slot = i
             return i
         end
     end
@@ -91,15 +108,38 @@ local function check_wrench()
     equip(slot)
 end
 
+function craft_more_redstone()
+    if robot.count(1) > 0 then
+        robot.select(1)
+        local slot = find_free_slot()
+        if slot == nil then
+            error("no free slots")
+        end
+        robot.transferTo(slot)
+    end
+    local slot = find_slot("redstone_block")
+    if slot == nil then
+        error("no redstone blocks")
+    end
+    gather(slot)
+    robot.select(slot)
+    robot.transferTo(1, 7)
+    robot.select(4)
+    ic.equip()
+    crafting.craft(64)
+    robot.transferTo(1)
+    ic.equip()
+end
+
 local function check_redstone()
     local slot = find_slot("redstone")
     if slot == nil then
-        error("no redstone")
+        craft_more_redstone()
     end
     gather(slot)
     local s = ic.getStackInInternalSlot(slot)
     if s.size < #condensator_slots then
-        error("insufficient redstone")
+        craft_more_redstone()
     end
 end
 
